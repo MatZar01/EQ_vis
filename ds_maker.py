@@ -4,7 +4,7 @@ import cv2
 import matplotlib.pyplot as plt
 from imutils import paths
 
-dataset_name = 'data/ida/PRJ-3563_archive/PRJ-3563'
+dataset_name = 'data/IDA_BD/PRJ-3563/'
 DIR = f'{dataset_name}/masks'
 pts = list(paths.list_images(DIR))
 pts_pre = []
@@ -15,7 +15,7 @@ for p in pts:
 
 DSIZE = [224, 224]
 MIN_SIZE = 15
-
+#%%
 iter = 0
 
 for p in pts_pre:
