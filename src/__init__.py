@@ -1,4 +1,4 @@
-from .dataset import BanditData
+from .dataset import EQ_Data
 from .models import Small_Net, UNet, ConvNet_2d, Encoded_ConvNet_2d, ConvNet_2d_slim
 from .trainer import train, test
 from .grapher import Grapher
