@@ -27,3 +27,15 @@ for i in range(bsize):
     out.append(res)
 
 out = torch.tensor(torch.stack(out)).unsqueeze(dim=1)
+#%%
+import numpy as np
+import cv2
+
+im_1 = cv2.imread('/home/mateusz/Desktop/EQ_vis/data/IDA_BD/PRJ-3563/masks/AOI3-tile_6-5_post_disaster.png', -1)
+im_2 = cv2.imread('/home/mateusz/Desktop/EQ_vis/data/IDA_BD/PRJ-3563/masks/AOI3-tile_6-5_pre_disaster.png', -1)//255
+
+im_1 = np.where(im_1 != 0, 1, 0)
+
+i_ou = im_2 - im_1
+o = np.unique(i_ou)
+print(o)

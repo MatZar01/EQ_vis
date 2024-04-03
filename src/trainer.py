@@ -2,10 +2,10 @@ import numpy as np
 import torch
 
 
-def train(dataloader, model, loss_fn, optimizer, device='cuda'):
+def train(dataloader, model, loss_fn, optimizer, device='cuda') -> (float, float, float):
     model.train()
     loss, test_loss, acc = None, None, None
-    for ft1, ft2, flag in dataloader:
+    for ft1, ft2, flag, meta in dataloader:
         ft1, ft2, flag = ft1.to(device), ft2.to(device), flag.to(device)
 
         # Compute prediction error
@@ -24,12 +24,12 @@ def train(dataloader, model, loss_fn, optimizer, device='cuda'):
     return round(loss, 4), round(test_loss, 4), round(acc, 3)
 
 
-def test(dataloader, model, loss_fn, device='cuda'):
+def test(dataloader, model, loss_fn, device='cuda') -> (float, float):
     num_batches = len(dataloader)
     model.eval()
     test_loss, correct = 0, 0
     with torch.no_grad():
-        for ft1, ft2, flag in dataloader:
+        for ft1, ft2, flag, meta in dataloader:
             ft1, ft2, flag = ft1.to(device), ft2.to(device), flag.to(device)
             embs = model(ft1, ft2)
             test_loss += loss_fn(embs, flag.float()).item()

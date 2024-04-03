@@ -20,7 +20,7 @@ class EQ_Data(Dataset):
 
         train_inds, test_inds = get_train_test_inds(train_size, len(A_pts))
 
-        self.data_shape = cv2.imread(A_pts[0], 0).shape, S.shape[-1]
+        self.data_shape = cv2.imread(A_pts[0], -1).shape, S.shape[-1]
 
         if self.train:
             self.A_pts = [A_pts[i] for i in train_inds]
@@ -34,13 +34,14 @@ class EQ_Data(Dataset):
     def __len__(self) -> int:
         return len(self.A_pts)
 
-    def __getitem__(self, idx) -> (torch.Tensor, torch.Tensor, torch.Tensor):
+    def __getitem__(self, idx) -> (torch.Tensor, torch.Tensor, torch.Tensor, dict):
         A = torch.Tensor(cv2.imread(self.A_pts[idx], -1)).permute(2, 0, 1)
         B = torch.Tensor(cv2.imread(self.B_pts[idx], -1)).permute(2, 0, 1)
         S = torch.Tensor(self.S[idx])
 
         meta = {'A': {'im': cv2.imread(self.A_pts[idx], -1), 'pt': self.A_pts[idx]},
-                'B': {'im': cv2.imread(self.B_pts[idx], -1), 'pt': self.B_pts[idx]}
+                'B': {'im': cv2.imread(self.B_pts[idx], -1), 'pt': self.B_pts[idx]},
+                'S': {'val': self.S[idx]}
                 }
 
         if self.onehot:
