@@ -31,13 +31,37 @@ class Small_Net(nn.Module):
             nn.Conv2d(input_size[-1], 16, (3, 3), 1, 1),
             nn.Conv2d(16, 32, (3, 3), 1, 1),
             nn.Conv2d(32, 64, (3, 3), 1, 1),
+            nn.ReLU(),
+            nn.MaxPool2d((2, 2)),
+            nn.Conv2d(64, 128, (3, 3), 1, 1),
+            nn.Conv2d(128, 128, (3, 3), 1, 1),
+            nn.Conv2d(128, 128, (3, 3), 1, 1),
+            nn.ReLU(),
+            nn.MaxPool2d((2, 2)),
+            nn.Conv2d(128, 128, (3, 3), 1, 1),
+            nn.Conv2d(128, 256, (3, 3), 1, 1),
+            nn.ReLU(),
+            nn.MaxPool2d((2, 2)),
+            nn.Conv2d(256, 256, (3, 3), 1, 1),
+            nn.Conv2d(256, 256, (3, 3), 1, 1),
+            nn.ReLU(),
+            nn.MaxPool2d((2, 2)),
+            nn.Conv2d(256, 256, (3, 3), 1, 1),
+            nn.Conv2d(256, 256, (3, 3), 1, 1),
+            nn.ReLU(),
+            nn.MaxPool2d((2, 2)),
+            nn.Flatten()
         )
         self.embedder_second = copy.deepcopy(self.embedder_first)
 
         self.classifier = nn.Sequential(
-            nn.Linear(32, 16),
-            nn.Tanh(),
-            nn.Linear(16, output_size)
+            nn.Linear(12544, 4096),
+            nn.ReLU(),
+            nn.Linear(4096, 512),
+            nn.ReLU(),
+            nn.Linear(512, 128),
+            nn.ReLU(),
+            nn.Linear(128, output_size)
         )
 
     def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:

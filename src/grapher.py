@@ -1,14 +1,16 @@
 import matplotlib.pyplot as plt
 from datetime import datetime
 from scipy.signal import savgol_filter
+import pickle
 
 
 class Grapher:
-    def __init__(self, base_pt: str):
+    def __init__(self, base_pt: str, save_pickle: bool = True):
         self.train_loss = []
         self.test_loss = []
         self.train_acc = []
         self.test_acc = []
+        self.save_pickle = save_pickle
         self.path = self.__set_path(base_pt)
 
     def __set_path(self, base_pt: str):
@@ -23,6 +25,13 @@ class Grapher:
 
     def smooth_data(self, data):
         return savgol_filter(data, 11, 3, mode='nearest')
+
+    def make_out_dict(self):
+        return {'epoch_num': len(self.test_acc),
+                'train': {'loss': self.train_loss, 'acc': self.train_acc,
+                          'loss_s': self.smooth_data(self.train_loss), 'acc_s': self.smooth_data(self.train_acc)},
+                'test': {'loss': self.test_loss, 'acc': self.test_acc,
+                         'loss_s': self.smooth_data(self.test_loss), 'acc_s': self.smooth_data(self.test_acc)}}
 
     def make_graph(self):
         epochs = list(range(len(self.test_acc)))
@@ -45,3 +54,6 @@ class Grapher:
         ax[1].set_title('Train/test accuracy')
         ax[1].legend()
         plt.savefig(self.path, bbox_inches='tight')
+
+        if self.save_pickle:
+            pickle.dump(self.make_out_dict(), open(self.path.replace('png', 'pkl'), 'wb'))
