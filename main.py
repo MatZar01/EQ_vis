@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from src import EQ_Data
-from src import Small_Net
+from src import Init_net, Small_net
 from src import train, test
 from src import Grapher
 from src import verbose
@@ -11,7 +11,7 @@ from src import get_train_test_inds
 B_pt = 'DS/IDA-BD/i_B'
 
 DEVICE = 'cuda'
-EPOCHS = 30
+EPOCHS = 80
 LR = 1e-4
 TRAIN_SIZE = 0.75
 grapher = Grapher(base_pt='./result_graphs')
@@ -24,10 +24,8 @@ train_dataloader = DataLoader(data_train, batch_size=64, shuffle=True)
 test_dataloader = DataLoader(data_test, batch_size=64, shuffle=True)
 
 # load network
-model = Small_Net(input_size=data_train.data_shape[0], output_size=data_train.data_shape[1], fuse_method=5).to(DEVICE)
-#model = ConvNet_2d(output_size=data_train.data_shape[1], fuse_method=5).to(DEVICE)
-#model = Encoded_ConvNet_2d(input_size=data_train.data_shape[0], output_size=data_train.data_shape[1], fuse_method=5).to(DEVICE)
-#model = ConvNet_2d_slim(output_size=data_train.data_shape[1]).to(DEVICE)
+#model = Init_net(input_size=data_train.data_shape[0], output_size=data_train.data_shape[1], fuse_method=5).to(DEVICE)
+model = Small_net(input_size=data_train.data_shape[0], output_size=data_train.data_shape[1], fuse_method=1).to(DEVICE)
 
 # initialize loss fn and optimizer
 #loss = torch.nn.MSELoss()
