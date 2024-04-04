@@ -5,12 +5,13 @@ import pickle
 
 
 class Grapher:
-    def __init__(self, base_pt: str, save_pickle: bool = True):
+    def __init__(self, base_pt: str, save_info: bool = True, model_info: dict = None):
         self.train_loss = []
         self.test_loss = []
         self.train_acc = []
         self.test_acc = []
-        self.save_pickle = save_pickle
+        self.model_info = model_info
+        self.save_info = save_info
         self.path = self.__set_path(base_pt)
 
     def __set_path(self, base_pt: str):
@@ -27,11 +28,17 @@ class Grapher:
         return savgol_filter(data, 11, 3, mode='nearest')
 
     def make_out_dict(self):
-        return {'epoch_num': len(self.test_acc),
+        out_dict = {'epoch_num': len(self.test_acc),
                 'train': {'loss': self.train_loss, 'acc': self.train_acc,
                           'loss_s': self.smooth_data(self.train_loss), 'acc_s': self.smooth_data(self.train_acc)},
                 'test': {'loss': self.test_loss, 'acc': self.test_acc,
                          'loss_s': self.smooth_data(self.test_loss), 'acc_s': self.smooth_data(self.test_acc)}}
+
+        if self.model_info is not None:
+            self.model_info.update(out_dict)
+            return self.model_info
+        else:
+            return out_dict
 
     def make_graph(self):
         epochs = list(range(len(self.test_acc)))
@@ -55,5 +62,5 @@ class Grapher:
         ax[1].legend()
         plt.savefig(self.path, bbox_inches='tight')
 
-        if self.save_pickle:
+        if self.save_info:
             pickle.dump(self.make_out_dict(), open(self.path.replace('png', 'pkl'), 'wb'))
