@@ -3,10 +3,9 @@ from src import EQ_Data
 import torch
 import matplotlib.pyplot as plt
 
-A_pt = 'DS/IDA-BD/i_A'
 B_pt = 'DS/IDA-BD/i_B'
 
-data_train = EQ_Data(B_pt, train=True, train_size=0.8, onehot=True)
+data_train = EQ_Data(B_pt, train=True, train_size=0.8, onehot=True, seed=None)
 
 a, b, s, meta = next(iter(data_train))
 plt.imshow(meta['A']['im'])
@@ -14,7 +13,7 @@ plt.show()
 plt.imshow(meta['B']['im'])
 plt.show()
 #%%
-train_dataloader = DataLoader(data_train, batch_size=4, shuffle=True)
+train_dataloader = DataLoader(data_train, batch_size=4, shuffle=False)
 data = next(iter(train_dataloader))
 #%%
 import numpy as np

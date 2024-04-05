@@ -12,21 +12,23 @@ B_pt = 'DS/IDA-BD/i_B'
 
 model_info = {
     'DEVICE': 'cuda',
-    'EPOCHS': 1,
+    'EPOCHS': 60,
     'LR': 1e-4,
     'TRAIN_SIZE': 0.75,
-    'FUSE_METHOD': 2,
-    'MODEL_NAME': 'Small_net_NF'
+    'FUSE_METHOD': 4,
+    'DATA_SEED': 42,
+    'BATCH_SIZE': 128,
+    'MODEL_NAME': 'Small_net'
 }
 
-grapher = Grapher(base_pt='./result_graphs')
+grapher = Grapher(base_pt='./result_graphs', model_info=model_info)
 
 # prepare dataset
-data_train = EQ_Data(B_pt, train=True, train_size=model_info['TRAIN_SIZE'], onehot=True)
-data_test = EQ_Data(B_pt, train=False, train_size=model_info['TRAIN_SIZE'], onehot=True)
+data_train = EQ_Data(B_pt, train=True, train_size=model_info['TRAIN_SIZE'], onehot=True, seed=model_info['DATA_SEED'])
+data_test = EQ_Data(B_pt, train=False, train_size=model_info['TRAIN_SIZE'], onehot=True, seed=model_info['DATA_SEED'])
 
-train_dataloader = DataLoader(data_train, batch_size=64, shuffle=True)
-test_dataloader = DataLoader(data_test, batch_size=64, shuffle=True)
+train_dataloader = DataLoader(data_train, batch_size=model_info['BATCH_SIZE'], shuffle=False)
+test_dataloader = DataLoader(data_test, batch_size=model_info['BATCH_SIZE'], shuffle=False)
 
 # import models and initialize network
 nets_module = importlib.import_module('src.models')

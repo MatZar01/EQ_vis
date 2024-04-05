@@ -8,9 +8,12 @@ import cv2
 
 
 class EQ_Data(Dataset):
-    def __init__(self, B_pt: str, train: bool, train_size: float, onehot: bool):
+    def __init__(self, B_pt: str, train: bool, train_size: float, onehot: bool, seed: int = None):
         self.train = train
         self.onehot = onehot
+
+        if seed is None:
+            seed = random.randint(0, 1024)
 
         B_pts = list(paths.list_images(B_pt))
         A_pts = [f'{pt[:-6].replace("i_B", "i_A")}.png' for pt in B_pts]
@@ -18,7 +21,7 @@ class EQ_Data(Dataset):
 
         if onehot: S = self.onehot_score(S)
 
-        train_inds, test_inds = get_train_test_inds(train_size, len(A_pts))
+        train_inds, test_inds = get_train_test_inds(train_size, len(A_pts), seed=seed)
 
         self.data_shape = cv2.imread(A_pts[0], -1).shape, S.shape[-1]
 
@@ -55,7 +58,8 @@ class EQ_Data(Dataset):
         return enc.transform(S_tensor.reshape(-1, 1)).toarray().astype(int)
 
 
-def get_train_test_inds(TRAIN_SIZE, ds_length):
+def get_train_test_inds(TRAIN_SIZE: float, ds_length: int, seed: int):
+    random.seed(seed)
     ind_list = list(range(ds_length))
     train_inds = random.sample(ind_list, int(TRAIN_SIZE*ds_length))
     test_inds = list(set(ind_list) - set(train_inds))
