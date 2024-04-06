@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 from src import EQ_Data
-from src import Small_Net
 from src import train, test
 from src import Grapher
 from src import verbose

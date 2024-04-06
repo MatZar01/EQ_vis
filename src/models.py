@@ -22,7 +22,7 @@ def fuse_fts(ft1: torch.Tensor, ft2: torch.Tensor, method: int) -> torch.Tensor:
         return NotImplementedError
 
 
-class Init_net(nn.Module):
+class Small_Net(nn.Module):
     def __init__(self, input_size: int, output_size: int, fuse_method: int):
         super().__init__()
         self.fuse_method = fuse_method
@@ -71,70 +71,4 @@ class Init_net(nn.Module):
         fused = fuse_fts(emb_1, emb_2, method=self.fuse_method)
 
         logits = self.classifier(fused)
-        return torch.sigmoid(logits)
-
-
-class Small_net(nn.Module):
-    def __init__(self, input_size: int, output_size: int, fuse_method: int):
-        super().__init__()
-        self.fuse_method = fuse_method
-        self.embedder_first = nn.Sequential(
-            nn.BatchNorm2d(input_size[-1]),
-            nn.Conv2d(input_size[-1], 4, (3, 3), 1, 1),
-            nn.Conv2d(4, 8, (3, 3), 1, 1),
-            nn.Conv2d(8, 8, (3, 3), 1, 1),
-            nn.ReLU(),
-            nn.MaxPool2d((2, 2)),
-            #nn.BatchNorm2d(32),
-            nn.Conv2d(8, 16, (3, 3), 1, 1),
-            nn.Conv2d(16, 16, (3, 3), 1, 1),
-            nn.ReLU(),
-            nn.MaxPool2d((2, 2)),
-            #nn.BatchNorm2d(64),
-            nn.Conv2d(16, 32, (3, 3), 1, 1),
-            nn.Conv2d(32, 32, (3, 3), 1, 1),
-            nn.ReLU(),
-            nn.MaxPool2d((2, 2)),
-            #nn.BatchNorm2d(64),
-            nn.Conv2d(32, 64, (3, 3), 1, 1),
-            nn.ReLU(),
-            nn.MaxPool2d((2, 2)),
-            #nn.BatchNorm2d(128),
-            nn.Conv2d(64, 64, (3, 3), 1, 1),
-            nn.ReLU(),
-            nn.MaxPool2d((2, 2)),
-            #nn.BatchNorm2d(128),
-            nn.Flatten()
-        )
-        self.embedder_second = copy.deepcopy(self.embedder_first)
-
-        self.classifier = nn.Sequential(
-            nn.Linear(3136, 1024),
-            nn.ReLU(),
-            nn.Linear(1024, 512),
-            nn.ReLU(),
-            nn.Linear(512, 128),
-            nn.ReLU(),
-            nn.Linear(128, output_size)
-        )
-
-    def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
-        emb_1 = self.embedder_first(ft1)
-        emb_2 = self.embedder_second(ft2)
-
-        fused = fuse_fts(emb_1, emb_2, method=self.fuse_method)
-
-        logits = self.classifier(fused)
-        return torch.sigmoid(logits)
-
-
-class Small_net_NF(Small_net):
-    def __init__(self,  input_size: int, output_size: int, fuse_method: int):
-        super().__init__(input_size, output_size, fuse_method)
-        self.embedder_second = None
-
-    def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
-        emb_2 = self.embedder_first(ft2)
-
-        logits = self.classifier(emb_2)
         return torch.sigmoid(logits)
