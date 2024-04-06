@@ -19,7 +19,7 @@ def fuse_fts(ft1: torch.Tensor, ft2: torch.Tensor, method: int) -> torch.Tensor:
                              torch.cartesian_prod(ft1[x, :], ft2[x, :])[:, 1]
                              for x in range(ft1.shape[0])])
     else:
-        return NotImplementedError
+        raise NotImplementedError
 
 
 class Small_Net(nn.Module):

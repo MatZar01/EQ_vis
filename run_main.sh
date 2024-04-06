@@ -1,1 +1,1 @@
-export QT_QPA_PLATFORM=offscreen && python3 main.py
+tensorboard --logdir=runs && export QT_QPA_PLATFORM=offscreen && python3 main.py
