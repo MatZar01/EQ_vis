@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 B_pt = 'DS/IDA-BD/i_B'
 
-data_train = EQ_Data(B_pt, train=True, train_size=0.8, onehot=True, seed=None)
+data_train = EQ_Data(B_pt, train=True, train_size=0.8, onehot=True, seed=42)
 
 a, b, s, meta = next(iter(data_train))
 plt.imshow(meta['A']['im'])
