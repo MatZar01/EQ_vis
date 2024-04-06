@@ -20,10 +20,10 @@ model_info = {
     'LR': 1e-4,
     'TRAIN_SIZE': 0.75,
     'FUSE_METHOD': 2,
-    'DATA_SEED': None,
+    'DATA_SEED': 997,
     'BATCH_SIZE': 64,
     'OPT': 'Adam',
-    'SCHEDULER': {'NAME': 'ROP', 'PAT': 5, 'FAC': 0.8},
+    'SCHEDULER': {'NAME': 'ROP', 'PATIENCE': 5, 'FACTOR': 0.8, 'STEP': 5, 'GAMMA': 0.5},
     'MODEL_NAME': 'Small_Net'
 }
 
@@ -67,7 +67,7 @@ for e in range(model_info['EPOCHS']):
     grapher.add_data(train_data=train_res, test_data=test_res, lr=optimizer.param_groups[0]['lr'])
 
     # perform scheduler update
-    scheduler.update(epoch=e, train_loss=train_res[0])
+    scheduler.update(train_loss=train_res[0])
 
 grapher.make_graph()
 writer.flush()
