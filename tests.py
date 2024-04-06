@@ -38,3 +38,13 @@ im_1 = np.where(im_1 != 0, 1, 0)
 i_ou = im_2 - im_1
 o = np.unique(i_ou)
 print(o)
+#%%
+def iii(a, b):
+    print(a)
+    if a != b:
+        print(0)
+    else:
+        pass
+    print('end')
+
+iii(1, 1)
