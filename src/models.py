@@ -22,7 +22,7 @@ def fuse_fts(ft1: torch.Tensor, ft2: torch.Tensor, method: int) -> torch.Tensor:
         raise NotImplementedError
 
 
-class Small_Net(nn.Module):
+class Init_Net(nn.Module):
     def __init__(self, input_size: int, output_size: int, fuse_method: int):
         super().__init__()
         self.fuse_method = fuse_method
@@ -71,4 +71,17 @@ class Small_Net(nn.Module):
         fused = fuse_fts(emb_1, emb_2, method=self.fuse_method)
 
         logits = self.classifier(fused)
+        return torch.sigmoid(logits)
+
+
+class Init_Net_NF(Init_Net):
+    """Small_Net without feature fusion - only second branch for post disaster images"""
+    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+        super().__init__(input_size=input_size, output_size=output_size, fuse_method=fuse_method)
+
+        self.embedder_second = None
+
+    def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
+        emb = self.embedder_first(ft2)
+        logits = self.classifier(emb)
         return torch.sigmoid(logits)

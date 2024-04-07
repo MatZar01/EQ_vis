@@ -1,5 +1,5 @@
 from .dataset import EQ_Data
-from .models import Small_Net
+from .models import Init_Net
 from .trainer import train, test
 from .grapher import Grapher
 from .verbose import verbose, update_writer
