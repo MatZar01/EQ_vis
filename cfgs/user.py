@@ -9,5 +9,5 @@ model_info = {
     'BATCH_SIZE': 64,
     'OPT': 'Adam',
     'SCHEDULER': {'NAME': 'ROP', 'PATIENCE': 5, 'FACTOR': 0.8, 'STEP': 5, 'GAMMA': 0.5},
-    'MODEL_NAME': 'Small_Net'
+    'MODEL_NAME': 'Init_Net'
 }

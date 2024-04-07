@@ -8,55 +8,54 @@ from torch.utils.data import DataLoader
 import importlib
 from torch.utils.tensorboard import SummaryWriter
 
-# get args for current  run
-model_info = get_args()
+if __name__ == '__main__':
+    # get args for current  run
+    model_info = get_args()
+    # set models module path for auto imports
+    nets_module = importlib.import_module('src.models')
 
-# set models module path for auto imports
-nets_module = importlib.import_module('src.models')
+    grapher = Grapher(base_pt='./result_graphs', model_info=model_info)
+    writer = SummaryWriter()
 
-grapher = Grapher(base_pt='./result_graphs', model_info=model_info)
-writer = SummaryWriter()
+    # prepare dataset
+    ds_idx = get_train_test_idx(model_info['TRAIN_SIZE'], model_info['DATA_PATH'], model_info['DATA_SEED'])
+    data_train = EQ_Data(model_info['DATA_PATH'], train=True, onehot=True, ds_idx=ds_idx)
+    data_test = EQ_Data(model_info['DATA_PATH'], train=False, onehot=True, ds_idx=ds_idx)
 
-# prepare dataset
-ds_idx = get_train_test_idx(model_info['TRAIN_SIZE'], model_info['DATA_PATH'], model_info['DATA_SEED'])
-data_train = EQ_Data(model_info['DATA_PATH'], train=True, onehot=True, ds_idx=ds_idx)
-data_test = EQ_Data(model_info['DATA_PATH'], train=False, onehot=True, ds_idx=ds_idx)
+    train_dataloader = DataLoader(data_train, batch_size=model_info['BATCH_SIZE'], shuffle=True)
+    test_dataloader = DataLoader(data_test, batch_size=model_info['BATCH_SIZE'], shuffle=True)
 
-train_dataloader = DataLoader(data_train, batch_size=model_info['BATCH_SIZE'], shuffle=True)
-test_dataloader = DataLoader(data_test, batch_size=model_info['BATCH_SIZE'], shuffle=True)
+    # initialize model
+    net_class = getattr(nets_module, model_info['MODEL_NAME'])
+    model = net_class(input_size=data_train.data_shape[0], output_size=data_train.data_shape[1],
+                      fuse_method=model_info['FUSE_METHOD']).to(model_info['DEVICE'])
 
-# initialize model
-net_class = getattr(nets_module, model_info['MODEL_NAME'])
-model = net_class(input_size=data_train.data_shape[0], output_size=data_train.data_shape[1],
-                  fuse_method=model_info['FUSE_METHOD']).to(model_info['DEVICE'])
+    # initialize loss fn and optimizer
+    #loss = torch.nn.MSELoss()
+    #loss = torch.nn.HuberLoss()
+    loss = torch.nn.BCELoss()
 
-# initialize loss fn and optimizer
-#loss = torch.nn.MSELoss()
-#loss = torch.nn.HuberLoss()
-loss = torch.nn.BCELoss()
+    if model_info['OPT'] == 'Adam':
+        optimizer = torch.optim.Adam(model.parameters(), lr=model_info['LR'],
+                                     weight_decay=model_info['LR']/model_info['EPOCHS'], amsgrad=False)
+    else:
+        optimizer = torch.optim.SGD(model.parameters(), lr=model_info['LR'],
+                                    weight_decay=model_info['LR']/model_info['EPOCHS'])
 
-if model_info['OPT'] == 'Adam':
-    optimizer = torch.optim.Adam(model.parameters(), lr=model_info['LR'],
-                                 weight_decay=model_info['LR']/model_info['EPOCHS'], amsgrad=False)
-else:
-    optimizer = torch.optim.SGD(model.parameters(), lr=model_info['LR'],
-                                weight_decay=model_info['LR']/model_info['EPOCHS'])
+    # initialize scheduler
+    scheduler = Scheduler_manager(optimizer=optimizer, scheduler_options=model_info['SCHEDULER'])
 
-# initialize scheduler
-scheduler = Scheduler_manager(optimizer=optimizer, scheduler_options=model_info['SCHEDULER'])
+    # train
+    for e in range(model_info['EPOCHS']):
+        train_res = train(train_dataloader, model, loss, optimizer, device=model_info['DEVICE'])
+        test_res = test(test_dataloader, model, loss, device=model_info['DEVICE'])
+        verbose(e, train_res, test_res, freq=1)
+        update_writer(writer=writer, epoch=e, train_res=train_res, test_res=test_res, lr=optimizer.param_groups[0]['lr'])
+        grapher.add_data(train_data=train_res, test_data=test_res, lr=optimizer.param_groups[0]['lr'])
 
+        # perform scheduler update
+        scheduler.update(train_loss=train_res[0])
 
-# train
-for e in range(model_info['EPOCHS']):
-    train_res = train(train_dataloader, model, loss, optimizer, device=model_info['DEVICE'])
-    test_res = test(test_dataloader, model, loss, device=model_info['DEVICE'])
-    verbose(e, train_res, test_res, freq=1)
-    update_writer(writer=writer, epoch=e, train_res=train_res, test_res=test_res, lr=optimizer.param_groups[0]['lr'])
-    grapher.add_data(train_data=train_res, test_data=test_res, lr=optimizer.param_groups[0]['lr'])
-
-    # perform scheduler update
-    scheduler.update(train_loss=train_res[0])
-
-grapher.make_graph()
-writer.flush()
-print('[INFO] Done!')
+    grapher.make_graph()
+    writer.flush()
+    print('[INFO] Done!')
