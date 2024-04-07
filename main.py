@@ -1,39 +1,26 @@
-import numpy as np
 import torch
 from src import EQ_Data, get_train_test_idx
 from src import train, test
 from src import Grapher
 from src import Scheduler_manager
-from src import verbose, update_writer
+from src import verbose, update_writer, get_args
 from torch.utils.data import DataLoader
 import importlib
 from torch.utils.tensorboard import SummaryWriter
 
+# get args for current  run
+model_info = get_args()
+
 # set models module path for auto imports
 nets_module = importlib.import_module('src.models')
-
-B_pt = 'DS/IDA-BD/i_B'
-
-model_info = {
-    'DEVICE': 'cuda',
-    'EPOCHS': 60,
-    'LR': 1e-4,
-    'TRAIN_SIZE': 0.75,
-    'FUSE_METHOD': 2,
-    'DATA_SEED': None,
-    'BATCH_SIZE': 64,
-    'OPT': 'Adam',
-    'SCHEDULER': {'NAME': 'ROP', 'PATIENCE': 5, 'FACTOR': 0.8, 'STEP': 5, 'GAMMA': 0.5},
-    'MODEL_NAME': 'Small_Net'
-}
 
 grapher = Grapher(base_pt='./result_graphs', model_info=model_info)
 writer = SummaryWriter()
 
 # prepare dataset
-ds_idx = get_train_test_idx(model_info['TRAIN_SIZE'], B_pt, model_info['DATA_SEED'])
-data_train = EQ_Data(B_pt, train=True, onehot=True, ds_idx=ds_idx)
-data_test = EQ_Data(B_pt, train=False, onehot=True, ds_idx=ds_idx)
+ds_idx = get_train_test_idx(model_info['TRAIN_SIZE'], model_info['DATA_PATH'], model_info['DATA_SEED'])
+data_train = EQ_Data(model_info['DATA_PATH'], train=True, onehot=True, ds_idx=ds_idx)
+data_test = EQ_Data(model_info['DATA_PATH'], train=False, onehot=True, ds_idx=ds_idx)
 
 train_dataloader = DataLoader(data_train, batch_size=model_info['BATCH_SIZE'], shuffle=True)
 test_dataloader = DataLoader(data_test, batch_size=model_info['BATCH_SIZE'], shuffle=True)
