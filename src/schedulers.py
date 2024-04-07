@@ -1,6 +1,7 @@
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.optim.lr_scheduler import StepLR
 
+
 class Scheduler_manager:
     """Manage different schedulers"""
     def __init__(self, optimizer, scheduler_options: dict):
