@@ -9,7 +9,7 @@ def get_args() -> dict:
     args = sys.argv
 
     if len(args) == 1:
-        print('[INFO] No training arguments specified, using "default"')
+        print(f'[INFO] No training arguments specified, using "{cfg_name}"')
     else:
         print(f'[INFO] using "{args[-1]}" training arguments')
         cfg_name = args[-1]
