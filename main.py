@@ -16,11 +16,14 @@ if __name__ == '__main__':
 
     grapher = Grapher(base_pt='./result_graphs', model_info=model_info)
     writer = SummaryWriter()
+    writer.add_text('model_info', str(model_info))
 
     # prepare dataset
     ds_idx = get_train_test_idx(model_info['TRAIN_SIZE'], model_info['DATA_PATH'], model_info['DATA_SEED'])
-    data_train = EQ_Data(model_info['DATA_PATH'], train=True, onehot=True, ds_idx=ds_idx)
-    data_test = EQ_Data(model_info['DATA_PATH'], train=False, onehot=True, ds_idx=ds_idx)
+    data_train = EQ_Data(model_info['DATA_PATH'], train=True, onehot=True, ds_idx=ds_idx,
+                         normalize=model_info['NORMALIZE_INPUT'])
+    data_test = EQ_Data(model_info['DATA_PATH'], train=False, onehot=True, ds_idx=ds_idx,
+                        normalize=model_info['NORMALIZE_INPUT'])
 
     train_dataloader = DataLoader(data_train, batch_size=model_info['BATCH_SIZE'], shuffle=True)
     test_dataloader = DataLoader(data_test, batch_size=model_info['BATCH_SIZE'], shuffle=True)
@@ -54,7 +57,7 @@ if __name__ == '__main__':
         grapher.add_data(train_data=train_res, test_data=test_res, lr=optimizer.param_groups[0]['lr'])
 
         # perform scheduler update
-        scheduler.update(train_loss=train_res[0])
+        scheduler.update(test_loss=test_res[0])
 
     grapher.make_graph()
     writer.flush()

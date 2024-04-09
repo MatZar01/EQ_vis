@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 import copy
+from torchvision.models import vgg16, VGG16_Weights, resnet50, ResNet50_Weights
 
 
 def fuse_fts(ft1: torch.Tensor, ft2: torch.Tensor, method: int) -> torch.Tensor:
@@ -18,6 +19,8 @@ def fuse_fts(ft1: torch.Tensor, ft2: torch.Tensor, method: int) -> torch.Tensor:
         return torch.vstack([torch.cartesian_prod(ft1[x, :], ft2[x, :])[:, 0] *
                              torch.cartesian_prod(ft1[x, :], ft2[x, :])[:, 1]
                              for x in range(ft1.shape[0])])
+    elif method == 7:
+        return torch.concatenate([ft1, ft2], dim=1)
     else:
         raise NotImplementedError
 
@@ -104,6 +107,7 @@ class Fuse_Net(nn.Module):
 
         # 1st stage embedding
         self.stage_1_A = nn.Sequential(
+            nn.BatchNorm2d(64),
             nn.Conv2d(64, 64, (3, 3), 1, 1),
             nn.Conv2d(64, 64, (3, 3), 1, 1),
             nn.Conv2d(64, 64, (3, 3), 1, 1),
@@ -114,6 +118,7 @@ class Fuse_Net(nn.Module):
 
         # 2nd stage embedding
         self.stage_2_A = nn.Sequential(
+            nn.BatchNorm2d(64),
             nn.Conv2d(64, 64, (3, 3), 1, 1),
             nn.Conv2d(64, 64, (3, 3), 1, 1),
             nn.Conv2d(64, 64, (3, 3), 1, 1),
@@ -124,6 +129,7 @@ class Fuse_Net(nn.Module):
 
         # 3rd stage embedding
         self.stage_3_A = nn.Sequential(
+            nn.BatchNorm2d(64),
             nn.Conv2d(64, 64, (3, 3), 1, 1),
             nn.Conv2d(64, 64, (3, 3), 1, 1),
             nn.Conv2d(64, 64, (3, 3), 1, 1),
@@ -134,6 +140,7 @@ class Fuse_Net(nn.Module):
 
         # 4th stage embedding
         self.stage_4_A = nn.Sequential(
+            nn.BatchNorm2d(64),
             nn.Conv2d(64, 64, (3, 3), 1, 1),
             nn.Conv2d(64, 64, (3, 3), 1, 1),
             nn.Conv2d(64, 64, (3, 3), 1, 1),
@@ -184,5 +191,98 @@ class Fuse_Net(nn.Module):
 
         fused_final = torch.concatenate([fused_1, fused_2, fused_3, fused_4], dim=1)
 
-        logits = self.classifier(fused_final)
+        logits = self.classifier(fused_4)
         return torch.sigmoid(logits)
+
+
+class VGG_Fuse_net(nn.Module):
+    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+        super().__init__()
+        self.fuse_method = fuse_method
+        self.preprocess = VGG16_Weights.IMAGENET1K_FEATURES.transforms()
+
+        self.feature_extractor = vgg16(weights=VGG16_Weights.IMAGENET1K_FEATURES).features
+
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(512*7*7, output_size),
+            #nn.ReLU(),
+            #nn.Linear(4096, 512),
+            #nn.ReLU(),
+            #nn.Linear(512, output_size)
+        )
+
+    def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
+        # preprocess image
+        #ft1 = self.preprocess(ft1)
+        ft2 = self.preprocess(ft2)
+
+        with torch.no_grad():
+            #emb_1 = self.feature_extractor(ft1)
+            emb_2 = self.feature_extractor(ft2)
+
+        #fused = fuse_fts(emb_1, emb_2, self.fuse_method)
+        logits = self.classifier(emb_2)
+
+        return torch.sigmoid(logits)
+
+
+class ResNet_Fuse_Net(nn.Module):
+    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+        super().__init__()
+        self.fuse_method = fuse_method
+        self.preprocess = ResNet50_Weights.IMAGENET1K_V2.transforms()
+
+        self.feature_extractor = Res_Net_extractor()
+
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(2048*7*7, output_size),
+            nn.ReLU(),
+            nn.Linear(4096, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+            nn.Linear(512, output_size)
+        )
+
+    def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
+        # preprocess image
+        ft1 = self.preprocess(ft1)
+        ft2 = self.preprocess(ft2)
+
+        with torch.no_grad():
+            emb_1 = self.feature_extractor.extract_fts(ft1)
+            emb_2 = self.feature_extractor.extract_fts(ft2)
+
+        fused = fuse_fts(emb_1, emb_2, self.fuse_method)
+        logits = self.classifier(fused)
+
+        return torch.sigmoid(logits)
+
+
+class Res_Net_extractor:
+    def __init__(self, weights=ResNet50_Weights.IMAGENET1K_V2):
+        self.init_model = resnet50(weights=weights).to('cuda')
+        self.conv1 = self.init_model.conv1
+        self.bn1 = self.init_model.bn1
+        self.relu = self.init_model.relu
+        self.maxpool = self.init_model.maxpool
+        self.layer1 = self.init_model.layer1
+        self.layer2 = self.init_model.layer2
+        self.layer3 = self.init_model.layer3
+        self.layer4 = self.init_model.layer4
+        self.avgpool = self.init_model.avgpool
+
+    def extract_fts(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        return x

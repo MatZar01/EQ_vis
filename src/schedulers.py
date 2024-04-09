@@ -21,12 +21,12 @@ class Scheduler_manager:
             print('[INFO] Unknown scheduler selected, omitting')
             self.scheduler = None
 
-    def update(self, train_loss):
+    def update(self, test_loss):
         """Update scheduler and communicate LR update"""
         init_lr = self.optimizer.param_groups[0]['lr']
 
         if self.name == 'ROP':
-            self.scheduler.step(train_loss)
+            self.scheduler.step(test_loss)
         elif self.name == 'STEPLR':
             self.scheduler.step()
         else:

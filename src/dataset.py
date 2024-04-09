@@ -8,9 +8,10 @@ import cv2
 
 
 class EQ_Data(Dataset):
-    def __init__(self, B_pt: str, train: bool, onehot: bool, ds_idx: dict):
+    def __init__(self, B_pt: str, train: bool, onehot: bool, ds_idx: dict, normalize: bool = True):
         self.train = train
         self.onehot = onehot
+        self.normalize = normalize
         train_idx, test_idx = ds_idx['train'], ds_idx['test']
 
         B_pts = list(paths.list_images(B_pt))
@@ -34,12 +35,19 @@ class EQ_Data(Dataset):
         return len(self.A_pts)
 
     def __getitem__(self, idx) -> (torch.Tensor, torch.Tensor, torch.Tensor, dict):
-        A = torch.Tensor(cv2.imread(self.A_pts[idx], -1)).permute(2, 0, 1)
-        B = torch.Tensor(cv2.imread(self.B_pts[idx], -1)).permute(2, 0, 1)
+        A_image = cv2.imread(self.A_pts[idx], -1)
+        B_image = cv2.imread(self.B_pts[idx], -1)
+
+        if self.normalize:
+            A_image = cv2.normalize(A_image, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+            B_image = cv2.normalize(B_image, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+
+        A = torch.Tensor(A_image).permute(2, 0, 1)
+        B = torch.Tensor(B_image).permute(2, 0, 1)
         S = torch.Tensor(self.S[idx])
 
-        meta = {'A': {'im': cv2.imread(self.A_pts[idx], -1), 'pt': self.A_pts[idx]},
-                'B': {'im': cv2.imread(self.B_pts[idx], -1), 'pt': self.B_pts[idx]},
+        meta = {'A': {'im': A_image, 'pt': self.A_pts[idx]},
+                'B': {'im': B_image, 'pt': self.B_pts[idx]},
                 'S': {'val': self.S[idx]}
                 }
 

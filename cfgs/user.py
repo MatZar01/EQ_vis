@@ -7,6 +7,7 @@ model_info = {
     'FUSE_METHOD': 2,
     'DATA_SEED': 42,
     'BATCH_SIZE': 64,
+    'NORMALIZE_INPUT': True,
     'OPT': 'Adam',
     'SCHEDULER': {'NAME': 'ROP', 'PATIENCE': 5, 'FACTOR': 0.8, 'STEP': 5, 'GAMMA': 0.5},
     'MODEL_NAME': 'Init_Net'

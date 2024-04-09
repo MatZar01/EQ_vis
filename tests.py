@@ -1,3 +1,5 @@
+import torchvision
+
 from torch.utils.data import DataLoader
 from src import EQ_Data
 import torch
@@ -48,3 +50,38 @@ def iii(a, b):
     print('end')
 
 iii(1, 1)
+#%%
+from torchvision.models import resnet50, ResNet50_Weights
+import torchvision
+from torchsummary import summary
+from torch import Tensor
+preprocess = ResNet50_Weights.IMAGENET1K_V2.transforms()
+from typing import Any, Callable, List, Optional
+
+
+class Res_Net_extractor:
+    def __init__(self, weights=ResNet50_Weights.IMAGENET1K_V2):
+        self.init_model = resnet50(weights=weights).to('cuda')
+        self.conv1 = None
+
+    def _forward_impl(self, x: Tensor) -> Tensor:
+        # See note [TorchScript super()]
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+
+        return x
+
+
+feature_extractor = Res_Net_extractor(weights=ResNet50_Weights.IMAGENET1K_V2).to('cuda')
+feature_extractor.fc = None
+summary(feature_extractor, (3, 244, 244))
