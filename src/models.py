@@ -21,6 +21,28 @@ def fuse_fts(ft1: torch.Tensor, ft2: torch.Tensor, method: int) -> torch.Tensor:
                              for x in range(ft1.shape[0])])
     elif method == 7:
         return torch.concatenate([ft1, ft2], dim=1)
+    elif method == 8:
+        ft1 = torch.unsqueeze(ft1, dim=1)
+        ft2 = torch.unsqueeze(ft2, dim=1)
+        fts = torch.concatenate([ft1, ft2], dim=1)
+        return torch.mean(fts, dim=1)
+    elif method == 9:
+        ft1 = torch.unsqueeze(ft1, dim=1)
+        ft2 = torch.unsqueeze(ft2, dim=1)
+        fts = torch.concatenate([ft1, ft2], dim=1)
+        return torch.max(fts, dim=1).values
+    elif method == 10:
+        ft1 = torch.unsqueeze(ft1, dim=1)
+        ft2 = torch.unsqueeze(ft2, dim=1)
+        fts = torch.concatenate([ft1, ft2], dim=1)
+        return torch.median(fts, dim=1).values
+    elif method == 11:
+        return torch.abs(ft1 * ft2)
+    elif method == 12:
+        ft1 = torch.unsqueeze(ft1, dim=1)
+        ft2 = torch.unsqueeze(ft2, dim=1)
+        fts = torch.concatenate([ft1, ft2], dim=1)
+        return torch.prod(fts, dim=1)
     else:
         raise NotImplementedError
 
@@ -103,7 +125,7 @@ class Fuse_Net(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d((2, 2))
         )
-        self.initial_embedder_B = copy.deepcopy(self.initial_embedder_A)
+        #self.initial_embedder_B = copy.deepcopy(self.initial_embedder_A)
 
         # 1st stage embedding
         self.stage_1_A = nn.Sequential(
@@ -114,7 +136,7 @@ class Fuse_Net(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d((2, 2))
         )
-        self.stage_1_B = copy.deepcopy(self.stage_1_A)
+        #self.stage_1_B = copy.deepcopy(self.stage_1_A)
 
         # 2nd stage embedding
         self.stage_2_A = nn.Sequential(
@@ -125,7 +147,7 @@ class Fuse_Net(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d((2, 2))
         )
-        self.stage_2_B = copy.deepcopy(self.stage_2_A)
+        #self.stage_2_B = copy.deepcopy(self.stage_2_A)
 
         # 3rd stage embedding
         self.stage_3_A = nn.Sequential(
@@ -136,7 +158,7 @@ class Fuse_Net(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d((2, 2))
         )
-        self.stage_3_B = copy.deepcopy(self.stage_3_A)
+        #self.stage_3_B = copy.deepcopy(self.stage_3_A)
 
         # 4th stage embedding
         self.stage_4_A = nn.Sequential(
@@ -147,7 +169,7 @@ class Fuse_Net(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d((2, 2))
         )
-        self.stage_4_B = copy.deepcopy(self.stage_4_A)
+        #self.stage_4_B = copy.deepcopy(self.stage_4_A)
 
         # final classifier
         self.classifier = nn.Sequential(
@@ -164,34 +186,34 @@ class Fuse_Net(nn.Module):
     def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
         # initial embedding
         emb_A = self.initial_embedder_A(ft1)
-        emb_B = self.initial_embedder_B(ft2)
+        emb_B = self.initial_embedder_A(ft2)
 
         # 1st stage
         emb_A = self.stage_1_A(emb_A)
-        emb_B = self.stage_1_B(emb_B)
+        emb_B = self.stage_1_A(emb_B)
         fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
         fused_1 = nn.functional.max_pool2d(fused_1, (8, 8))
 
         # 2nd stage
         emb_A = self.stage_2_A(emb_A)
-        emb_B = self.stage_2_B(emb_B)
+        emb_B = self.stage_2_A(emb_B)
         fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
         fused_2 = nn.functional.max_pool2d(fused_2, (4, 4))
 
         # 3rd stage
         emb_A = self.stage_3_A(emb_A)
-        emb_B = self.stage_3_B(emb_B)
+        emb_B = self.stage_3_A(emb_B)
         fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
         fused_3 = nn.functional.max_pool2d(fused_3, (2, 2))
 
         # 4th stage
         emb_A = self.stage_4_A(emb_A)
-        emb_B = self.stage_4_B(emb_B)
+        emb_B = self.stage_4_A(emb_B)
         fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
 
         fused_final = torch.concatenate([fused_1, fused_2, fused_3, fused_4], dim=1)
 
-        logits = self.classifier(fused_4)
+        logits = self.classifier(fused_final)
         return torch.sigmoid(logits)
 
 
