@@ -99,6 +99,53 @@ class Init_Net(nn.Module):
         return torch.sigmoid(logits)
 
 
+class Comb_Net(nn.Module):
+    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+        super().__init__()
+        self.feature_extractor = nn.Sequential(
+            nn.BatchNorm2d(input_size[-1]*2),
+            nn.Conv2d(input_size[-1]*2, 16, (3, 3), 1, 1),
+            nn.Conv2d(16, 32, (3, 3), 1, 1),
+            nn.Conv2d(32, 64, (3, 3), 1, 1),
+            nn.ReLU(),
+            nn.MaxPool2d((2, 2)),
+            nn.Conv2d(64, 128, (3, 3), 1, 1),
+            nn.Conv2d(128, 128, (3, 3), 1, 1),
+            nn.Conv2d(128, 128, (3, 3), 1, 1),
+            nn.ReLU(),
+            nn.MaxPool2d((2, 2)),
+            nn.Conv2d(128, 128, (3, 3), 1, 1),
+            nn.Conv2d(128, 256, (3, 3), 1, 1),
+            nn.ReLU(),
+            nn.MaxPool2d((2, 2)),
+            nn.Conv2d(256, 256, (3, 3), 1, 1),
+            nn.Conv2d(256, 256, (3, 3), 1, 1),
+            nn.ReLU(),
+            nn.MaxPool2d((2, 2)),
+            nn.Conv2d(256, 256, (3, 3), 1, 1),
+            nn.Conv2d(256, 256, (3, 3), 1, 1),
+            nn.ReLU(),
+            nn.MaxPool2d((2, 2)),
+            nn.Flatten()
+        )
+        self.classifier = nn.Sequential(
+            nn.Linear(12544, 4096),
+            nn.ReLU(),
+            nn.Linear(4096, 512),
+            nn.ReLU(),
+            nn.Linear(512, 128),
+            nn.ReLU(),
+            nn.Linear(128, output_size)
+        )
+
+    def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
+        x = torch.concatenate([ft1, ft2], dim=1)
+        emb = self.feature_extractor(x)
+        logits = self.classifier(emb)
+
+        return torch.sigmoid(logits)
+
+
 class Init_Net_NF(Init_Net):
     """Small_Net without feature fusion - only second branch for post disaster images"""
     def __init__(self, input_size: int, output_size: int, fuse_method: int):

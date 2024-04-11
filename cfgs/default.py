@@ -10,5 +10,5 @@ model_info = {
     'NORMALIZE_INPUT': True,
     'OPT': 'Adam',
     'SCHEDULER': {'NAME': 'ROP', 'PATIENCE': 2, 'FACTOR': 0.8, 'STEP': 5, 'GAMMA': 0.5},
-    'MODEL_NAME': 'Fuse_Net'
+    'MODEL_NAME': 'Comb_Net'
 }
