@@ -12,8 +12,8 @@ class Light_Net(L.LightningModule):
         self.grapher = grapher
         self.model_info = model_info
 
-        self.loss_train = 0
-        self.loss_test = 0
+        self.loss_train = torch.Tensor([0])
+        self.loss_test = torch.Tensor([0])
         self.acc_train = torchmetrics.classification.Accuracy(task="multiclass", num_classes=4)
         self.acc_test = torchmetrics.classification.Accuracy(task="multiclass", num_classes=4)
 
@@ -48,7 +48,8 @@ class Light_Net(L.LightningModule):
         return self.loss_test
 
     def on_train_epoch_end(self):
-        self.grapher.add_data(train_data=[self.loss_train, self.acc_train], test_data=[self.loss_test, self.acc_test],
+        self.grapher.add_data(train_data=[self.loss_train.item(), self.acc_train.compute().item()],
+                              test_data=[self.loss_test.item(), self.acc_test.compute().item()],
                               lr=self.optimizer.param_groups[0]['lr'])
         self.log('Acc/train', self.acc_train.compute().item())
         self.log('Loss/train', self.loss_train)

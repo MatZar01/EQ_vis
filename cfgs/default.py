@@ -4,7 +4,7 @@ model_info = {
     'EPOCHS': 30,
     'LR': 1e-4,
     'TRAIN_SIZE': 0.8,
-    'FUSE_METHOD': 1,
+    'FUSE_METHOD': 2,
     'DATA_SEED': 24,
     'BATCH_SIZE': 32,
     'NORMALIZE_INPUT': True,
