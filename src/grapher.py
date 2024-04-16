@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from datetime import datetime
 from scipy.signal import savgol_filter
-import pickle
+import yaml
 
 
 class Grapher:
@@ -70,4 +70,4 @@ class Grapher:
         plt.savefig(self.path, bbox_inches='tight')
 
         if self.save_pickle:
-            pickle.dump(self.make_out_dict(), open(self.path.replace('png', 'pkl'), 'wb'))
+            yaml.dump(self.make_out_dict(), open(self.path.replace('png', 'yml'), 'w'))

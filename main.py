@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
     light_model = Light_Net(network=model, loss_fn=loss, optimizer=optimizer, model_info=model_info, grapher=grapher)
     lightning_trainer = L.Trainer(accelerator=model_info['DEVICE'], max_epochs=model_info['EPOCHS'],
-                                  limit_train_batches=400, limit_val_batches=100,
+                                  limit_train_batches=100, limit_val_batches=100,
                                   check_val_every_n_epoch=1, log_every_n_steps=20,
                                   enable_progress_bar=True)
 

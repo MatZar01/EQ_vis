@@ -1,7 +1,7 @@
 import torch
 import lightning as L
 import torchmetrics
-import pickle
+import yaml
 
 class Light_Net(L.LightningModule):
     def __init__(self, network, loss_fn, optimizer, model_info, grapher):
@@ -22,7 +22,7 @@ class Light_Net(L.LightningModule):
 
     def on_train_start(self):
         """save model info in pkl file"""
-        pickle.dump(self.model_info, open(f'{self.logger.log_dir}/model_info.pkl', 'wb'))
+        yaml.dump(self.model_info, open(f'{self.logger.log_dir}/model_info.yml', 'w'))
 
     def network_step(self, batch):
         ft1, ft2, flag, meta = batch
