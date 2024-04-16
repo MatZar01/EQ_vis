@@ -77,7 +77,7 @@ class Init_Net(nn.Module):
             nn.MaxPool2d((2, 2)),
             nn.Flatten()
         )
-        #self.embedder_second = copy.deepcopy(self.embedder_first)
+        self.embedder_second = copy.deepcopy(self.embedder_first)
 
         self.classifier = nn.Sequential(
             nn.Linear(12544, 4096),
@@ -91,12 +91,12 @@ class Init_Net(nn.Module):
 
     def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
         emb_1 = self.embedder_first(ft1)
-        emb_2 = self.embedder_first(ft2)
+        emb_2 = self.embedder_second(ft2)
 
         fused = fuse_fts(emb_1, emb_2, method=self.fuse_method)
 
         logits = self.classifier(fused)
-        return torch.sigmoid(logits)
+        return logits
 
 
 class Comb_Net(nn.Module):
@@ -143,7 +143,7 @@ class Comb_Net(nn.Module):
         emb = self.feature_extractor(x)
         logits = self.classifier(emb)
 
-        return torch.sigmoid(logits)
+        return logits
 
 
 class Init_Net_NF(Init_Net):
@@ -156,7 +156,7 @@ class Init_Net_NF(Init_Net):
     def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
         emb = self.embedder_first(ft2)
         logits = self.classifier(emb)
-        return torch.sigmoid(logits)
+        return logits
 
 
 class Fuse_Net(nn.Module):
@@ -261,7 +261,7 @@ class Fuse_Net(nn.Module):
         fused_final = torch.concatenate([fused_1, fused_2, fused_3, fused_4], dim=1)
 
         logits = self.classifier(fused_final)
-        return torch.sigmoid(logits)
+        return logits
 
 
 class VGG_Fuse_net(nn.Module):
@@ -293,7 +293,7 @@ class VGG_Fuse_net(nn.Module):
         #fused = fuse_fts(emb_1, emb_2, self.fuse_method)
         logits = self.classifier(emb_2)
 
-        return torch.sigmoid(logits)
+        return logits
 
 
 class ResNet_Fuse_Net(nn.Module):
@@ -327,7 +327,7 @@ class ResNet_Fuse_Net(nn.Module):
         fused = fuse_fts(emb_1, emb_2, self.fuse_method)
         logits = self.classifier(fused)
 
-        return torch.sigmoid(logits)
+        return logits
 
 
 class Res_Net_extractor:

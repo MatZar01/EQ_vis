@@ -1,32 +1,29 @@
 import torch
 from src import EQ_Data, get_train_test_idx
-from src import train, test
+from src import Light_Net
 from src import Grapher
 from src import Scheduler_manager
-from src import verbose, update_writer, get_args
+from src import verbose, get_args
 from torch.utils.data import DataLoader
 import importlib
-from torch.utils.tensorboard import SummaryWriter
+import lightning as L
 
 if __name__ == '__main__':
     # get args for current  run
     model_info = get_args()
+    grapher = Grapher(base_pt='./result_graphs', model_info=model_info)
     # set models module path for auto imports
     nets_module = importlib.import_module('src.models')
-
-    grapher = Grapher(base_pt='./result_graphs', model_info=model_info)
-    writer = SummaryWriter()
-    writer.add_text('model_info', str(model_info))
 
     # prepare dataset
     ds_idx = get_train_test_idx(model_info['TRAIN_SIZE'], model_info['DATA_PATH'], model_info['DATA_SEED'])
     data_train = EQ_Data(model_info['DATA_PATH'], train=True, onehot=True, ds_idx=ds_idx,
                          normalize=model_info['NORMALIZE_INPUT'])
-    data_test = EQ_Data(model_info['DATA_PATH'], train=False, onehot=True, ds_idx=ds_idx,
-                        normalize=model_info['NORMALIZE_INPUT'])
+    data_val = EQ_Data(model_info['DATA_PATH'], train=False, onehot=True, ds_idx=ds_idx,
+                       normalize=model_info['NORMALIZE_INPUT'])
 
-    train_dataloader = DataLoader(data_train, batch_size=model_info['BATCH_SIZE'], shuffle=True)
-    test_dataloader = DataLoader(data_test, batch_size=model_info['BATCH_SIZE'], shuffle=True)
+    train_dataloader = DataLoader(data_train, batch_size=model_info['BATCH_SIZE'], shuffle=True, num_workers=15)
+    val_dataloader = DataLoader(data_val, batch_size=model_info['BATCH_SIZE'], shuffle=False, num_workers=15)
 
     # initialize model
     net_class = getattr(nets_module, model_info['MODEL_NAME'])
@@ -34,9 +31,9 @@ if __name__ == '__main__':
                       fuse_method=model_info['FUSE_METHOD']).to(model_info['DEVICE'])
 
     # initialize loss fn and optimizer
-    #loss = torch.nn.MSELoss()
+    loss = torch.nn.MSELoss()
     #loss = torch.nn.HuberLoss()
-    loss = torch.nn.BCELoss()
+    #loss = torch.nn.BCELoss()
 
     if model_info['OPT'] == 'Adam':
         optimizer = torch.optim.Adam(model.parameters(), lr=model_info['LR'],
@@ -48,17 +45,14 @@ if __name__ == '__main__':
     # initialize scheduler
     scheduler = Scheduler_manager(optimizer=optimizer, scheduler_options=model_info['SCHEDULER'])
 
-    # train
-    for e in range(model_info['EPOCHS']):
-        train_res = train(train_dataloader, model, loss, optimizer, device=model_info['DEVICE'])
-        test_res = test(test_dataloader, model, loss, device=model_info['DEVICE'])
-        verbose(e, train_res, test_res, freq=1)
-        update_writer(writer=writer, epoch=e, train_res=train_res, test_res=test_res, lr=optimizer.param_groups[0]['lr'])
-        grapher.add_data(train_data=train_res, test_data=test_res, lr=optimizer.param_groups[0]['lr'])
+    light_model = Light_Net(network=model, loss_fn=loss, optimizer=optimizer, model_info=model_info, grapher=grapher)
+    lightning_trainer = L.Trainer(accelerator=model_info['DEVICE'], max_epochs=model_info['EPOCHS'],
+                                  limit_train_batches=400, limit_val_batches=100,
+                                  check_val_every_n_epoch=1, log_every_n_steps=20,
+                                  enable_progress_bar=True)
 
-        # perform scheduler update
-        scheduler.update(test_loss=test_res[0])
+    # train
+    lightning_trainer.fit(model=light_model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
 
     grapher.make_graph()
-    writer.flush()
     print('[INFO] Done!')

@@ -1,47 +1,61 @@
-import numpy as np
 import torch
+import lightning as L
+import torchmetrics
+import pickle
 
+class Light_Net(L.LightningModule):
+    def __init__(self, network, loss_fn, optimizer, model_info, grapher):
+        super().__init__()
+        self.network = network
+        self.loss_fn = loss_fn
+        self.optimizer = optimizer
+        self.grapher = grapher
+        self.model_info = model_info
 
-def train(dataloader, model, loss_fn, optimizer, device='cuda') -> (float, float, float):
-    model.train()
-    loss, test_loss, acc = None, None, None
-    for ft1, ft2, flag, meta in dataloader:
-        ft1, ft2, flag = ft1.to(device), ft2.to(device), flag.to(device)
+        self.loss_train = 0
+        self.loss_test = 0
+        self.acc_train = torchmetrics.classification.Accuracy(task="multiclass", num_classes=4)
+        self.acc_test = torchmetrics.classification.Accuracy(task="multiclass", num_classes=4)
 
-        # Compute prediction error
-        embs = model(ft1, ft2)
-        loss = loss_fn(embs, flag.float())
+    def configure_optimizers(self):
+        return self.optimizer
 
-        # Backpropagation
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+    def on_train_start(self):
+        """save model info in pkl file"""
+        pickle.dump(self.model_info, open(f'{self.logger.log_dir}/model_info.pkl', 'wb'))
 
-        loss = loss.item()
+    def network_step(self, batch):
+        ft1, ft2, flag, meta = batch
+        logits = self.network(ft1, ft2)
+        loss = self.loss_fn(logits, flag)
+        preds = torch.nn.functional.one_hot(torch.argmax(torch.nn.functional.sigmoid(logits), dim=1), num_classes=4)
+        return loss, preds, flag
 
-    test_loss, acc = test(dataloader, model, loss_fn, device=device)
+    def training_step(self, batch, batch_idx):
+        loss, preds, flag = self.network_step(batch)
+        self.loss_train = loss
+        self.acc_train(preds, flag)
 
-    return round(loss, 4), round(test_loss, 4), round(acc, 3)
+        self.log('Acc/train/step', self.acc_train)
+        self.log("Loss/train/step", self.loss_train)
+        return self.loss_train
 
+    def validation_step(self,  batch, batch_idx):
+        loss, preds, flag = self.network_step(batch)
+        self.loss_test = loss
+        self.acc_test(preds, flag)
 
-def test(dataloader, model, loss_fn, device='cuda') -> (float, float):
-    num_batches = len(dataloader)
-    model.eval()
-    test_loss, correct = 0, 0
-    with torch.no_grad():
-        for ft1, ft2, flag, meta in dataloader:
-            ft1, ft2, flag = ft1.to(device), ft2.to(device), flag.to(device)
-            embs = model(ft1, ft2)
-            test_loss += loss_fn(embs, flag.float()).item()
+        return self.loss_test
 
-            if dataloader.dataset.onehot:
-                predictions = torch.argmax(embs, dim=1)
-                flag = torch.argmax(flag, dim=1)
-            else:
-                predictions = torch.round(embs)
+    def on_train_epoch_end(self):
+        self.grapher.add_data(train_data=[self.loss_train, self.acc_train], test_data=[self.loss_test, self.acc_test],
+                              lr=self.optimizer.param_groups[0]['lr'])
+        self.log('Acc/train', self.acc_train.compute().item())
+        self.log('Loss/train', self.loss_train)
+        print(f'\nTraining:\nLoss: {self.loss_train} Accuracy: {self.acc_train.compute().item()}')
 
-            correct += torch.count_nonzero(flag == predictions).item() / predictions.shape[0]
+    def on_validation_epoch_end(self):
+        self.log('Acc/test', self.acc_test.compute().item())
+        self.log('Loss/test', self.loss_test)
+        print(f'\nTesting:\nLoss: {self.loss_test}, Accuracy: {self.acc_test.compute().item()}')
 
-    test_loss /= num_batches
-    acc = correct / num_batches * 100
-    return round(test_loss, 4), round(acc, 3)
