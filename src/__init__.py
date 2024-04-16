@@ -6,3 +6,4 @@ from .verbose import verbose
 from .dataset import get_train_test_idx
 from .schedulers import Scheduler_manager
 from .argv_manager import get_args
+from .fuse import fuse_fts

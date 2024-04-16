@@ -4,11 +4,11 @@ model_info = {
     'EPOCHS': 50,
     'LR': 1e-4,
     'TRAIN_SIZE': 0.8,
-    'FUSE_METHOD': 12,
+    'FUSE_METHOD': 8,
     'DATA_SEED': 24,
     'BATCH_SIZE': 32,
     'NORMALIZE_INPUT': True,
     'OPT': 'Adam',
     'SCHEDULER': {'NAME': 'ROP', 'PATIENCE': 2, 'FACTOR': 0.8, 'STEP': 5, 'GAMMA': 0.5},
-    'MODEL_NAME': 'Fuse_Net'
+    'MODEL_NAME': 'Fuse_Net_ELU'
 }

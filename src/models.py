@@ -2,49 +2,7 @@ import torch
 from torch import nn
 import copy
 from torchvision.models import vgg16, VGG16_Weights, resnet50, ResNet50_Weights
-
-
-def fuse_fts(ft1: torch.Tensor, ft2: torch.Tensor, method: int) -> torch.Tensor:
-    if method == 1:
-        return ft1 * ft2
-    elif method == 2:
-        return torch.abs(ft1 - ft2)
-    elif method == 3:
-        return torch.sqrt(ft1 ** 2 + ft2 ** 2)
-    elif method == 4:
-        return torch.tensordot(ft1.unsqueeze(1), ft2.unsqueeze(1))
-    elif method == 5:
-        return ft1 + ft2
-    elif method == 6:
-        return torch.vstack([torch.cartesian_prod(ft1[x, :], ft2[x, :])[:, 0] *
-                             torch.cartesian_prod(ft1[x, :], ft2[x, :])[:, 1]
-                             for x in range(ft1.shape[0])])
-    elif method == 7:
-        return torch.concatenate([ft1, ft2], dim=1)
-    elif method == 8:
-        ft1 = torch.unsqueeze(ft1, dim=1)
-        ft2 = torch.unsqueeze(ft2, dim=1)
-        fts = torch.concatenate([ft1, ft2], dim=1)
-        return torch.mean(fts, dim=1)
-    elif method == 9:
-        ft1 = torch.unsqueeze(ft1, dim=1)
-        ft2 = torch.unsqueeze(ft2, dim=1)
-        fts = torch.concatenate([ft1, ft2], dim=1)
-        return torch.max(fts, dim=1).values
-    elif method == 10:
-        ft1 = torch.unsqueeze(ft1, dim=1)
-        ft2 = torch.unsqueeze(ft2, dim=1)
-        fts = torch.concatenate([ft1, ft2], dim=1)
-        return torch.median(fts, dim=1).values
-    elif method == 11:
-        return torch.abs(ft1 * ft2)
-    elif method == 12:
-        ft1 = torch.unsqueeze(ft1, dim=1)
-        ft2 = torch.unsqueeze(ft2, dim=1)
-        fts = torch.concatenate([ft1, ft2], dim=1)
-        return torch.prod(fts, dim=1)
-    else:
-        raise NotImplementedError
+from .fuse import fuse_fts
 
 
 class Init_Net(nn.Module):
@@ -214,6 +172,111 @@ class Fuse_Net(nn.Module):
             nn.Conv2d(64, 64, (3, 3), 1, 1),
             nn.Conv2d(64, 64, (3, 3), 1, 1),
             nn.ReLU(),
+            nn.MaxPool2d((2, 2))
+        )
+        self.stage_4_B = copy.deepcopy(self.stage_4_A)
+
+        # final classifier
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(12544, 4096),
+            nn.ReLU(),
+            nn.Linear(4096, 512),
+            nn.ReLU(),
+            nn.Linear(512, 128),
+            nn.ReLU(),
+            nn.Linear(128, output_size)
+        )
+
+    def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
+        # initial embedding
+        emb_A = self.initial_embedder_A(ft1)
+        emb_B = self.initial_embedder_B(ft2)
+
+        # 1st stage
+        emb_A = self.stage_1_A(emb_A)
+        emb_B = self.stage_1_B(emb_B)
+        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_1 = nn.functional.max_pool2d(fused_1, (8, 8))
+
+        # 2nd stage
+        emb_A = self.stage_2_A(emb_A)
+        emb_B = self.stage_2_B(emb_B)
+        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_2 = nn.functional.max_pool2d(fused_2, (4, 4))
+
+        # 3rd stage
+        emb_A = self.stage_3_A(emb_A)
+        emb_B = self.stage_3_B(emb_B)
+        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_3 = nn.functional.max_pool2d(fused_3, (2, 2))
+
+        # 4th stage
+        emb_A = self.stage_4_A(emb_A)
+        emb_B = self.stage_4_B(emb_B)
+        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+
+        fused_final = torch.concatenate([fused_1, fused_2, fused_3, fused_4], dim=1)
+
+        logits = self.classifier(fused_final)
+        return logits
+
+
+class Fuse_Net_ELU(nn.Module):
+    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+        super().__init__()
+        self.fuse_method = fuse_method
+        # initial embedding
+        self.initial_embedder_A = nn.Sequential(
+            nn.BatchNorm2d(input_size[-1]),
+            nn.Conv2d(input_size[-1], 16, (3, 3), 1, 1),
+            nn.Conv2d(16, 32, (3, 3), 1, 1),
+            nn.Conv2d(32, 64, (3, 3), 1, 1),
+            nn.ELU(),
+            nn.MaxPool2d((2, 2))
+        )
+        self.initial_embedder_B = copy.deepcopy(self.initial_embedder_A)
+
+        # 1st stage embedding
+        self.stage_1_A = nn.Sequential(
+            nn.BatchNorm2d(64),
+            nn.Conv2d(64, 64, (3, 3), 1, 1),
+            nn.Conv2d(64, 64, (3, 3), 1, 1),
+            nn.Conv2d(64, 64, (3, 3), 1, 1),
+            nn.ELU(),
+            nn.MaxPool2d((2, 2))
+        )
+        self.stage_1_B = copy.deepcopy(self.stage_1_A)
+
+        # 2nd stage embedding
+        self.stage_2_A = nn.Sequential(
+            nn.BatchNorm2d(64),
+            nn.Conv2d(64, 64, (3, 3), 1, 1),
+            nn.Conv2d(64, 64, (3, 3), 1, 1),
+            nn.Conv2d(64, 64, (3, 3), 1, 1),
+            nn.ELU(),
+            nn.MaxPool2d((2, 2))
+        )
+        self.stage_2_B = copy.deepcopy(self.stage_2_A)
+
+        # 3rd stage embedding
+        self.stage_3_A = nn.Sequential(
+            nn.BatchNorm2d(64),
+            nn.Conv2d(64, 64, (3, 3), 1, 1),
+            nn.Conv2d(64, 64, (3, 3), 1, 1),
+            nn.Conv2d(64, 64, (3, 3), 1, 1),
+            nn.ELU(),
+            nn.MaxPool2d((2, 2))
+        )
+        self.stage_3_B = copy.deepcopy(self.stage_3_A)
+
+        # 4th stage embedding
+        self.stage_4_A = nn.Sequential(
+            nn.BatchNorm2d(64),
+            nn.Conv2d(64, 64, (3, 3), 1, 1),
+            nn.Conv2d(64, 64, (3, 3), 1, 1),
+            nn.Conv2d(64, 64, (3, 3), 1, 1),
+            nn.ELU(),
             nn.MaxPool2d((2, 2))
         )
         self.stage_4_B = copy.deepcopy(self.stage_4_A)
