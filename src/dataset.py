@@ -8,19 +8,28 @@ import cv2
 
 
 class EQ_Data(Dataset):
-    def __init__(self, B_pt: str, train: bool, onehot: bool, ds_idx: dict, normalize: bool = True):
+    def __init__(self, B_pt: str, train: bool, onehot: bool, ds_idx: dict,
+                 normalize: bool = True, weights: list = None):
         self.train = train
         self.onehot = onehot
         self.normalize = normalize
+        self.weights = weights
         train_idx, test_idx = ds_idx['train'], ds_idx['test']
 
         B_pts = list(paths.list_images(B_pt))
         A_pts = [f'{pt[:-6].replace("i_B", "i_A")}.png' for pt in B_pts]
         S = np.array([int(x.split('_')[-1].split('.')[0]) for x in B_pts])
 
-        if onehot: S = self.onehot_score(S)
+        # add weights to data
+        if weights is not None:
+            self.weights = [weights[x - 1] for x in S]
 
-        self.data_shape = cv2.imread(A_pts[0], -1).shape, S.shape[-1]
+        if onehot:
+            S = self.onehot_score(S)
+            self.data_shape = cv2.imread(A_pts[0], -1).shape, S.shape[-1]
+        else:
+            S = S - 1  # to have classes [0...3]
+            self.data_shape = cv2.imread(A_pts[0], -1).shape, 4  # S shape = 4 for NLLLoss
 
         if self.train:
             self.A_pts = [A_pts[i] for i in train_idx]
@@ -44,17 +53,18 @@ class EQ_Data(Dataset):
 
         A = torch.Tensor(A_image).permute(2, 0, 1)
         B = torch.Tensor(B_image).permute(2, 0, 1)
-        S = torch.Tensor(self.S[idx])
+
+        if self.onehot:
+            S = torch.Tensor(self.S[idx])
+        else:
+            S = torch.Tensor([self.S[idx]])
 
         meta = {'A': {'im': A_image, 'pt': self.A_pts[idx]},
                 'B': {'im': B_image, 'pt': self.B_pts[idx]},
                 'S': {'val': self.S[idx]}
                 }
 
-        if self.onehot:
-            return A, B, S, meta
-        else:
-            return A, B, S[idx].unsqueeze(0), meta
+        return A, B, S, self.weights[idx], meta
 
     def onehot_score(self, S_tensor) -> np.array:
         enc = OneHotEncoder()
