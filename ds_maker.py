@@ -3,9 +3,10 @@ import pickle
 import cv2
 import matplotlib.pyplot as plt
 from imutils import paths
+from tqdm import tqdm
 
-dataset_name = 'data/IDA_BD/PRJ-3563/'
-DIR = f'{dataset_name}/masks'
+dataset_name = 'data/IDA_BD/IDA-BD/PRJ-3563/'
+DIR = f'{dataset_name}/labels'
 pts = list(paths.list_images(DIR))
 pts_pre = []
 
@@ -13,16 +14,17 @@ for p in pts:
     if "_pre_" in p:
         pts_pre.append(p)
 
-DSIZE = [224, 224]
+DSIZE = [512, 512]
 MIN_SIZE = 15
 #%%
 iter = 0
 
-for p in pts_pre:
+for i in tqdm(range(len(pts_pre))):
+    p = pts_pre[i]
     lbl_pre_p = p
     lbl_post_p = p.replace('_pre_', '_post_')
-    im_pre_p = p.replace('masks', 'images')
-    im_post_p = lbl_post_p.replace('masks', 'images')
+    im_pre_p = p.replace('labels', 'images')
+    im_post_p = lbl_post_p.replace('labels', 'images')
 
     lbl_pre = cv2.imread(lbl_pre_p, -1)
     lbl_post = cv2.imread(lbl_post_p, -1)
@@ -54,17 +56,17 @@ for p in pts_pre:
         warped_lbl_post = cv2.warpPerspective(lbl_post, M, (width, height))
         warped_post = cv2.warpPerspective(im_post, M, (width, height))
 
-        warped_lbl = cv2.resize(warped_lbl, DSIZE, interpolation=cv2.INTER_NEAREST)
-        warped = cv2.resize(warped, DSIZE, interpolation=cv2.INTER_NEAREST)
+        warped_lbl = cv2.resize(warped_lbl, DSIZE, interpolation=cv2.INTER_CUBIC)
+        warped = cv2.resize(warped, DSIZE, interpolation=cv2.INTER_CUBIC)
 
         lbl_post_counts = list(np.unique(warped_lbl_post, return_counts=True))
         if 0 in lbl_post_counts[0]:
             lbl_post_counts[0], lbl_post_counts[1] = lbl_post_counts[0][1:], lbl_post_counts[1][1:]
         label = lbl_post_counts[0][np.argmax(lbl_post_counts[1])]
 
-        warped_lbl_post = cv2.resize(warped_lbl_post, DSIZE, interpolation=cv2.INTER_NEAREST)
+        warped_lbl_post = cv2.resize(warped_lbl_post, DSIZE, interpolation=cv2.INTER_CUBIC)
 
-        warped_post = cv2.resize(warped_post, DSIZE, interpolation=cv2.INTER_NEAREST)
+        warped_post = cv2.resize(warped_post, DSIZE, interpolation=cv2.INTER_CUBIC)
 
         '''cv2.imshow('dd', warped_lbl)
         cv2.imshow('ss', warped)
@@ -74,9 +76,6 @@ for p in pts_pre:
         cv2.imwrite(f'DS/IDA-BD/i_A/{iter}.png', warped)
         cv2.imwrite(f'DS/IDA-BD/i_B/{iter}_{label}.png', warped_post)
         iter += 1
-
-        if iter % 100 == 0:
-            print(f'{iter} images extracted')
 
     '''plt.imshow(lbl_pre)
     plt.show()'''
