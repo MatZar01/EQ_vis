@@ -222,6 +222,105 @@ class Fuse_Net(nn.Module):
         return logits
 
 
+class Fuse_Mk1(nn.Module):
+    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+        super().__init__()
+        self.fuse_method = fuse_method
+        # Stage 1
+        self.stage_1_A = nn.Sequential(
+            nn.BatchNorm2d(input_size[-1]),
+            nn.Conv2d(input_size[-1], 16, (3, 3), 1, 1),
+            nn.Conv2d(16, 32, (3, 3), 1, 1),
+            nn.Conv2d(32, 64, (3, 3), 1, 1),
+            nn.ReLU(),
+        )
+        self.stage_1_B = copy.deepcopy(self.stage_1_A)
+
+        # Stage 2
+        self.stage_2_A = nn.Sequential(
+            nn.BatchNorm2d(64),
+            nn.Conv2d(64, 64, (3, 3), 1, 1),
+            nn.Conv2d(64, 64, (3, 3), 1, 1),
+            nn.Conv2d(64, 64, (3, 3), 1, 1),
+            nn.ReLU(),
+            nn.MaxPool2d((2, 2))
+        )
+        self.stage_2_B = copy.deepcopy(self.stage_2_A)
+
+        # Stage 3
+        self.stage_3_A = nn.Sequential(
+            nn.BatchNorm2d(64),
+            nn.Conv2d(64, 64, (3, 3), 1, 1),
+            nn.Conv2d(64, 64, (3, 3), 1, 1),
+            nn.Conv2d(64, 64, (3, 3), 1, 1),
+            nn.ReLU(),
+            nn.MaxPool2d((2, 2))
+        )
+        self.stage_3_B = copy.deepcopy(self.stage_3_A)
+
+        # Stage 4
+        self.stage_4 = nn.Sequential(
+            nn.BatchNorm2d(192),
+            nn.Conv2d(192, 192, (3, 3), 1, 1),
+            nn.Conv2d(192, 192, (3, 3), 1, 1),
+            nn.Conv2d(192, 192, (3, 3), 1, 1),
+            nn.ReLU(),
+            nn.MaxPool2d((2, 2))
+        )
+
+        # Stage 5
+        self.stage_5 = nn.Sequential(
+            nn.BatchNorm2d(192),
+            nn.Conv2d(192, 192, (3, 3), 1, 1),
+            nn.Conv2d(192, 192, (3, 3), 1, 1),
+            nn.Conv2d(192, 192, (3, 3), 1, 1),
+            nn.ReLU(),
+            nn.MaxPool2d((4, 4))
+        )
+
+        # final classifier
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(7*7*192, 4096),
+            nn.ReLU(),
+            nn.Linear(4096, 512),
+            nn.ReLU(),
+            nn.Linear(512, 128),
+            nn.ReLU(),
+            nn.Linear(128, output_size)
+        )
+
+    def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
+        # Stage 1
+        emb_A = self.stage_1_A(ft1)
+        emb_B = self.stage_1_B(ft2)
+        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_1 = nn.functional.max_pool2d(fused_1, (4, 4))
+
+        # Stage 2
+        emb_A = self.stage_2_A(emb_A)
+        emb_B = self.stage_2_B(emb_B)
+        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_2 = nn.functional.max_pool2d(fused_2, (2, 2))
+
+        # Stage 3
+        emb_A = self.stage_3_A(emb_A)
+        emb_B = self.stage_3_B(emb_B)
+        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+
+        # Concatenate stages
+        fused_stages = torch.concatenate([fused_1, fused_2, fused_3], dim=1)
+
+        # Stage 4
+        emb = self.stage_4(fused_stages)
+
+        # Stage 5
+        emb = self.stage_5(emb)
+
+        logits = self.classifier(emb)
+        return logits
+
+
 class Fuse_Net_ELU(nn.Module):
     def __init__(self, input_size: int, output_size: int, fuse_method: int):
         super().__init__()
@@ -369,11 +468,11 @@ class ResNet50_Fuse_Net(nn.Module):
 
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(2048, 512),
+            nn.Linear(2048, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 512),
             nn.ReLU(),
             nn.Linear(512, output_size),
-            #nn.ReLU(),
-            #nn.Linear(1024, 512),
             #nn.ReLU(),
             #nn.Linear(512, output_size)
         )
@@ -383,9 +482,9 @@ class ResNet50_Fuse_Net(nn.Module):
         ft1 = self.preprocess(ft1)
         ft2 = self.preprocess(ft2)
 
-        with torch.no_grad():
-            emb_1 = self.feature_extractor.extract_fts(ft1)
-            emb_2 = self.feature_extractor.extract_fts(ft2)
+        #with torch.no_grad():
+        emb_1 = self.feature_extractor.extract_fts(ft1)
+        emb_2 = self.feature_extractor.extract_fts(ft2)
 
         fused = fuse_fts(emb_1, emb_2, self.fuse_method)
         logits = self.classifier(fused)
