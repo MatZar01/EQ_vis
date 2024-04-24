@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from imutils import paths
 from tqdm import tqdm
 
-dataset_name = 'data/IDA_BD/IDA-BD/PRJ-3563/'
-DIR = f'{dataset_name}/labels'
+dataset_name = 'data/IDA_BD/PRJ-3563'
+DIR = f'{dataset_name}/masks'
 pts = list(paths.list_images(DIR))
 pts_pre = []
 
@@ -14,7 +14,7 @@ for p in pts:
     if "_pre_" in p:
         pts_pre.append(p)
 
-DSIZE = [512, 512]
+DSIZE = [224, 224]
 MIN_SIZE = 15
 #%%
 iter = 0
@@ -23,8 +23,8 @@ for i in tqdm(range(len(pts_pre))):
     p = pts_pre[i]
     lbl_pre_p = p
     lbl_post_p = p.replace('_pre_', '_post_')
-    im_pre_p = p.replace('labels', 'images')
-    im_post_p = lbl_post_p.replace('labels', 'images')
+    im_pre_p = p.replace('masks', 'images')
+    im_post_p = lbl_post_p.replace('masks', 'images')
 
     lbl_pre = cv2.imread(lbl_pre_p, -1)
     lbl_post = cv2.imread(lbl_post_p, -1)

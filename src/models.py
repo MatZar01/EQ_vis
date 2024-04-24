@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 import copy
-from torchvision.models import vgg16, VGG16_Weights, resnet50, ResNet50_Weights
+from torchvision.models import vgg16, VGG16_Weights, resnet50, ResNet50_Weights, resnet18, ResNet18_Weights
 from .fuse import fuse_fts
 
 
@@ -337,45 +337,45 @@ class VGG_Fuse_net(nn.Module):
 
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(512*7*7, output_size),
-            #nn.ReLU(),
-            #nn.Linear(4096, 512),
+            nn.Linear(512*7*7, 512),
+            nn.ReLU(),
+            nn.Linear(512, output_size),
             #nn.ReLU(),
             #nn.Linear(512, output_size)
         )
 
     def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
         # preprocess image
-        #ft1 = self.preprocess(ft1)
+        ft1 = self.preprocess(ft1)
         ft2 = self.preprocess(ft2)
 
-        with torch.no_grad():
-            #emb_1 = self.feature_extractor(ft1)
-            emb_2 = self.feature_extractor(ft2)
+        #with torch.no_grad():
+        emb_1 = self.feature_extractor(ft1)
+        emb_2 = self.feature_extractor(ft2)
 
-        #fused = fuse_fts(emb_1, emb_2, self.fuse_method)
+        fused = fuse_fts(emb_1, emb_2, self.fuse_method)
         logits = self.classifier(emb_2)
 
         return logits
 
 
-class ResNet_Fuse_Net(nn.Module):
+class ResNet50_Fuse_Net(nn.Module):
     def __init__(self, input_size: int, output_size: int, fuse_method: int):
         super().__init__()
         self.fuse_method = fuse_method
         self.preprocess = ResNet50_Weights.IMAGENET1K_V2.transforms()
 
-        self.feature_extractor = Res_Net_extractor()
+        self.feature_extractor = ResNet50_extractor()
 
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(2048*7*7, output_size),
+            nn.Linear(2048, 512),
             nn.ReLU(),
-            nn.Linear(4096, 1024),
-            nn.ReLU(),
-            nn.Linear(1024, 512),
-            nn.ReLU(),
-            nn.Linear(512, output_size)
+            nn.Linear(512, output_size),
+            #nn.ReLU(),
+            #nn.Linear(1024, 512),
+            #nn.ReLU(),
+            #nn.Linear(512, output_size)
         )
 
     def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
@@ -393,28 +393,26 @@ class ResNet_Fuse_Net(nn.Module):
         return logits
 
 
-class Res_Net_extractor:
+class ResNet18_Fuse_Net(ResNet50_Fuse_Net):
+    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+        super().__init__(input_size=input_size, output_size=output_size, fuse_method=fuse_method)
+        self.preprocess = ResNet18_Weights.IMAGENET1K_V1.transforms()
+        self.feature_extractor = ResNet18_extractor()
+
+
+class ResNet50_extractor:
     def __init__(self, weights=ResNet50_Weights.IMAGENET1K_V2):
         self.init_model = resnet50(weights=weights).to('cuda')
-        self.conv1 = self.init_model.conv1
-        self.bn1 = self.init_model.bn1
-        self.relu = self.init_model.relu
-        self.maxpool = self.init_model.maxpool
-        self.layer1 = self.init_model.layer1
-        self.layer2 = self.init_model.layer2
-        self.layer3 = self.init_model.layer3
-        self.layer4 = self.init_model.layer4
-        self.avgpool = self.init_model.avgpool
+        self.init_model.fc = nn.Identity()
 
     def extract_fts(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
+        return self.init_model(x)
 
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
 
-        return x
+class ResNet18_extractor:
+    def __init__(self, weights=ResNet18_Weights.IMAGENET1K_V1):
+        self.init_model = resnet18(weights=weights).to('cuda')
+        self.init_model.fc = nn.Identity()
+
+    def extract_fts(self, x: torch.Tensor) -> torch.Tensor:
+        return self.init_model(x)
