@@ -85,3 +85,21 @@ class Res_Net_extractor:
 feature_extractor = Res_Net_extractor(weights=ResNet50_Weights.IMAGENET1K_V2).to('cuda')
 feature_extractor.fc = None
 summary(feature_extractor, (3, 244, 244))
+#%%
+import torch
+from torch import nn
+
+input = torch.randn((3, 224, 224))
+input2 = torch.randn((1, 3, 224, 224))
+l = nn.Conv2d(3, 3, (3, 3), stride=(4, 4), padding=(1, 1))
+out = l(input)
+conv_filters = 3
+pool_size = 4
+module = nn.Sequential(
+                    nn.BatchNorm2d(conv_filters),
+                    nn.Conv2d(conv_filters, conv_filters, (3, 3), 1, 1),
+                    nn.Conv2d(conv_filters, conv_filters, (3, 3), 1, 1),
+                    nn.Conv2d(conv_filters, conv_filters, (3, 3), stride=(pool_size, pool_size), padding=(1, 1)),
+                    nn.ReLU(),
+                )
+out2 = module(input2)
