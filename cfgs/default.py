@@ -11,7 +11,7 @@ model_info = {
     'NORMALIZE_INPUT': True,
     'OPT': 'Adam',
     'SCHEDULER': {'NAME': 'ROP', 'PATIENCE': 2, 'FACTOR': 0.7, 'STEP': 5, 'GAMMA': 0.5},
-    'MODEL_NAME': 'Fuse_Mk2',
+    'MODEL_NAME': 'Fuse_Mk3',
     'LOG': True,
 
     'CLASS_W': [0.7298184429172223, 2.1619568520206625, 6.197735191637631, 169.4047619047619]
