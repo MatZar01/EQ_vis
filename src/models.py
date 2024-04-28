@@ -403,7 +403,7 @@ class Fuse_Mk4(nn.Module):
         # Stage 5
         self.stage_5 = Stage_Module(mod_type='conv_pool', conv_filters=64, pool_size=2)
 
-        # Stage 5
+        # Stage 6
         self.stage_6 = Stage_Module(mod_type='conv_pool', conv_filters=64, pool_size=4)
 
         # final classifier
@@ -449,6 +449,62 @@ class Fuse_Mk4(nn.Module):
 
         # Stage 6
         emb = self.stage_6(emb)
+
+        logits = self.classifier(emb)
+        return logits
+
+
+class Fuse_Mk5(Fuse_Mk4):
+    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+        super().__init__(input_size, output_size, fuse_method)
+
+        # New stage after S4
+        self.stage_4_1_A = Stage_Module(conv_filters=64)
+        self.stage_4_1_B = copy.deepcopy(self.stage_4_1_A)
+
+        # New stage after S6
+        self.stage_6_1 = Stage_Module(conv_filters=64)
+
+    def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
+        # Stage 1
+        emb_A = self.stage_1_A(ft1)
+        emb_B = self.stage_1_B(ft2)
+        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_1 = self.stage_1_downsize(fused_1)
+
+        # Stage 2
+        emb_A = self.stage_2_A(emb_A)
+        emb_B = self.stage_2_B(emb_B)
+        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_2 = self.stage_2_downsize(fused_2)
+        fused_2 = fuse_fts(fused_1, fused_2, method=self.fuse_method)
+
+        # Stage 3
+        emb_A = self.stage_3_A(emb_A)
+        emb_B = self.stage_3_B(emb_B)
+        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_3 = fuse_fts(fused_2, fused_3, method=self.fuse_method)
+
+        # Stage 4
+        emb_A = self.stage_4_A(emb_A)
+        emb_B = self.stage_4_B(emb_B)
+        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_4 = fuse_fts(fused_3, fused_4, method=self.fuse_method)
+
+        # Stage 4.1
+        emb_A = self.stage_4_1_A(emb_A)
+        emb_B = self.stage_4_1_B(emb_B)
+        fused_41 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_41 = fuse_fts(fused_4, fused_41, method=self.fuse_method)
+
+        # Stage 5
+        emb = self.stage_5(fused_41)
+
+        # Stage 6
+        emb = self.stage_6(emb)
+
+        # Stage 6.1
+        emb = self.stage_6_1(emb)
 
         logits = self.classifier(emb)
         return logits
