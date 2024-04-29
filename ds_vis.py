@@ -27,3 +27,12 @@ for p in pts:
     lbls.append(int(p.split('_')[-1].split('.')[0]))
 lbls = np.array(lbls)
 uq2 = np.unique(lbls, return_counts=True)
+#%%
+import numpy as np
+data = np.loadtxt('/home/mateusz/Downloads/lt/bazalosl_razem/dl_razem.txt', dtype=str)[:, 2]
+data = np.array([l.split(',') for l in data], dtype=int)
+#%%
+import matplotlib.pyplot as plt
+uq, bins = np.unique(data, return_counts=True)
+zipped = sorted(zip(bins, uq))
+Z = [x for _,x in zipped][::-1][:6]
