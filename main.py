@@ -30,7 +30,7 @@ if __name__ == '__main__':
     # initialize model
     net_class = getattr(nets_module, model_info['MODEL_NAME'])
     model = net_class(input_size=data_train.data_shape[0], output_size=data_train.data_shape[1],
-                      fuse_method=model_info['FUSE_METHOD']).to(model_info['DEVICE'])
+                      fuse_methods=model_info['FUSE_METHODS']).to(model_info['DEVICE'])
 
     # initialize loss fn and optimizer
     loss = torch.nn.MSELoss()
@@ -60,5 +60,6 @@ if __name__ == '__main__':
     # train
     lightning_trainer.fit(model=light_model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
 
-    grapher.make_graph()
+    grapher.save_data()
+    #grapher.make_graph()
     print('[INFO] Done!')

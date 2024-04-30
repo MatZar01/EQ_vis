@@ -27,7 +27,7 @@ class Grapher:
         self.lr.append(lr)
 
     def smooth_data(self, data):
-        return savgol_filter(data, 11, 3, mode='nearest')
+        return savgol_filter(data, 11, 3, mode='nearest').tolist()
 
     def make_out_dict(self):
         out_dict = {'epoch_num': len(self.test_acc),
@@ -41,6 +41,9 @@ class Grapher:
             return self.model_info
         else:
             return out_dict
+
+    def save_data(self):
+        yaml.dump(self.make_out_dict(), open(self.path.replace('png', 'yml'), 'w'))
 
     def make_graph(self):
         epochs = list(range(len(self.test_acc)))
@@ -70,4 +73,4 @@ class Grapher:
         plt.savefig(self.path, bbox_inches='tight')
 
         if self.save_pickle:
-            yaml.dump(self.make_out_dict(), open(self.path.replace('png', 'yml'), 'w'))
+            self.save_data()

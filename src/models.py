@@ -6,9 +6,9 @@ from .fuse import fuse_fts
 
 
 class Init_Net(nn.Module):
-    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
-        self.fuse_method = fuse_method
+        self.fuse_methods = fuse_methods['H']
         self.embedder_first = nn.Sequential(
             nn.BatchNorm2d(input_size[-1]),
             nn.Conv2d(input_size[-1], 16, (3, 3), 1, 1),
@@ -51,14 +51,14 @@ class Init_Net(nn.Module):
         emb_1 = self.embedder_first(ft1)
         emb_2 = self.embedder_second(ft2)
 
-        fused = fuse_fts(emb_1, emb_2, method=self.fuse_method)
+        fused = fuse_fts(emb_1, emb_2, method=self.fuse_methods)
 
         logits = self.classifier(fused)
         return logits
 
 
 class Comb_Net(nn.Module):
-    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
         self.feature_extractor = nn.Sequential(
             nn.BatchNorm2d(input_size[-1]*2),
@@ -106,8 +106,8 @@ class Comb_Net(nn.Module):
 
 class Init_Net_NF(Init_Net):
     """Small_Net without feature fusion - only second branch for post disaster images"""
-    def __init__(self, input_size: int, output_size: int, fuse_method: int):
-        super().__init__(input_size=input_size, output_size=output_size, fuse_method=fuse_method)
+    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
+        super().__init__(input_size=input_size, output_size=output_size, fuse_methods=fuse_methods)
 
         self.embedder_second = None
 
@@ -118,9 +118,9 @@ class Init_Net_NF(Init_Net):
 
 
 class Fuse_Net(nn.Module):
-    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
-        self.fuse_method = fuse_method
+        self.fuse_methods = fuse_methods['H']
         # initial embedding
         self.initial_embedder_A = nn.Sequential(
             nn.BatchNorm2d(input_size[-1]),
@@ -196,25 +196,25 @@ class Fuse_Net(nn.Module):
         # 1st stage
         emb_A = self.stage_1_A(emb_A)
         emb_B = self.stage_1_B(emb_B)
-        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
         fused_1 = nn.functional.max_pool2d(fused_1, (8, 8))
 
         # 2nd stage
         emb_A = self.stage_2_A(emb_A)
         emb_B = self.stage_2_B(emb_B)
-        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
         fused_2 = nn.functional.max_pool2d(fused_2, (4, 4))
 
         # 3rd stage
         emb_A = self.stage_3_A(emb_A)
         emb_B = self.stage_3_B(emb_B)
-        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
         fused_3 = nn.functional.max_pool2d(fused_3, (2, 2))
 
         # 4th stage
         emb_A = self.stage_4_A(emb_A)
         emb_B = self.stage_4_B(emb_B)
-        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
 
         fused_final = torch.concatenate([fused_1, fused_2, fused_3, fused_4], dim=1)
 
@@ -223,9 +223,9 @@ class Fuse_Net(nn.Module):
 
 
 class Fuse_Mk2_0(nn.Module):
-    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
-        self.fuse_method = fuse_method
+        self.fuse_methods = fuse_methods['H']
         # Stage 1
         self.stage_1_A = nn.Sequential(
             nn.BatchNorm2d(input_size[-1]),
@@ -304,24 +304,24 @@ class Fuse_Mk2_0(nn.Module):
         # Stage 1
         emb_A = self.stage_1_A(ft1)
         emb_B = self.stage_1_B(ft2)
-        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
         fused_1 = nn.functional.max_pool2d(fused_1, (4, 4))
 
         # Stage 2
         emb_A = self.stage_2_A(emb_A)
         emb_B = self.stage_2_B(emb_B)
-        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
         fused_2 = nn.functional.max_pool2d(fused_2, (2, 2))
 
         # Stage 3
         emb_A = self.stage_3_A(emb_A)
         emb_B = self.stage_3_B(emb_B)
-        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
 
         # Stage 4
         emb_A = self.stage_4_A(emb_A)
         emb_B = self.stage_4_B(emb_B)
-        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
 
         # Concatenate stages
         fused_stages = torch.concatenate([fused_1, fused_2, fused_3, fused_4], dim=1)
@@ -388,9 +388,10 @@ class Stage_Module(nn.Module):
 
 
 class Fuse_Mk4(nn.Module):
-    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
-        self.fuse_method = fuse_method
+        self.fuse_v = fuse_methods['V']
+        self.fuse_h = fuse_methods['H']
         filter_count = 64
         # Stage 1
         self.stage_1_A = Stage_Module(mod_type='conv_upsample', input_filters=input_size[-1], conv_filters=filter_count)
@@ -432,27 +433,27 @@ class Fuse_Mk4(nn.Module):
         # Stage 1
         emb_A = self.stage_1_A(ft1)
         emb_B = self.stage_1_B(ft2)
-        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_h)
         fused_1 = self.stage_1_downsize(fused_1)
 
         # Stage 2
         emb_A = self.stage_2_A(emb_A)
         emb_B = self.stage_2_B(emb_B)
-        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_h)
         fused_2 = self.stage_2_downsize(fused_2)
-        fused_2 = fuse_fts(fused_1, fused_2, method=self.fuse_method)
+        fused_2 = fuse_fts(fused_1, fused_2, method=self.fuse_v)
 
         # Stage 3
         emb_A = self.stage_3_A(emb_A)
         emb_B = self.stage_3_B(emb_B)
-        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
-        fused_3 = fuse_fts(fused_2, fused_3, method=self.fuse_method)
+        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_h)
+        fused_3 = fuse_fts(fused_2, fused_3, method=self.fuse_v)
 
         # Stage 4
         emb_A = self.stage_4_A(emb_A)
         emb_B = self.stage_4_B(emb_B)
-        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
-        fused_4 = fuse_fts(fused_3, fused_4, method=self.fuse_method)
+        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_h)
+        fused_4 = fuse_fts(fused_3, fused_4, method=self.fuse_v)
 
         # Stage 5
         emb = self.stage_5(fused_4)
@@ -465,9 +466,9 @@ class Fuse_Mk4(nn.Module):
 
 
 class Fuse_Mk6(nn.Module):
-    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
-        self.fuse_method = fuse_method
+        self.fuse_methods = fuse_methods['H']
         # Stage 1
         self.stage_1_A = Stage_Module(mod_type='conv_upsample', input_filters=input_size[-1], conv_filters=16)
         self.stage_1_B = copy.deepcopy(self.stage_1_A)
@@ -508,24 +509,24 @@ class Fuse_Mk6(nn.Module):
         # Stage 1
         emb_A = self.stage_1_A(ft1)
         emb_B = self.stage_1_B(ft2)
-        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
         fused_1 = self.stage_1_downsize(fused_1)
 
         # Stage 2
         emb_A = self.stage_2_A(emb_A)
         emb_B = self.stage_2_B(emb_B)
-        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
         fused_2 = self.stage_2_downsize(fused_2)
 
         # Stage 3
         emb_A = self.stage_3_A(emb_A)
         emb_B = self.stage_3_B(emb_B)
-        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
 
         # Stage 4
         emb_A = self.stage_4_A(emb_A)
         emb_B = self.stage_4_B(emb_B)
-        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
 
         # Concatenate stages
         fused_stages = torch.concatenate([fused_1, fused_2, fused_3, fused_4], dim=1)
@@ -541,9 +542,10 @@ class Fuse_Mk6(nn.Module):
 
 
 class Fuse_Mk5(Fuse_Mk4):
-    def __init__(self, input_size: int, output_size: int, fuse_method: int):
-        super().__init__(input_size, output_size, fuse_method)
-
+    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
+        super().__init__(input_size, output_size, fuse_methods)
+        self.fuse_v = fuse_methods['V']
+        self.fuse_h = fuse_methods['H']
         # New stage after S4
         self.stage_4_1_A = Stage_Module(conv_filters=64)
         self.stage_4_1_B = copy.deepcopy(self.stage_4_1_A)
@@ -555,33 +557,33 @@ class Fuse_Mk5(Fuse_Mk4):
         # Stage 1
         emb_A = self.stage_1_A(ft1)
         emb_B = self.stage_1_B(ft2)
-        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_h)
         fused_1 = self.stage_1_downsize(fused_1)
 
         # Stage 2
         emb_A = self.stage_2_A(emb_A)
         emb_B = self.stage_2_B(emb_B)
-        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_h)
         fused_2 = self.stage_2_downsize(fused_2)
-        fused_2 = fuse_fts(fused_1, fused_2, method=self.fuse_method)
+        fused_2 = fuse_fts(fused_1, fused_2, method=self.fuse_v)
 
         # Stage 3
         emb_A = self.stage_3_A(emb_A)
         emb_B = self.stage_3_B(emb_B)
-        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
-        fused_3 = fuse_fts(fused_2, fused_3, method=self.fuse_method)
+        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_h)
+        fused_3 = fuse_fts(fused_2, fused_3, method=self.fuse_v)
 
         # Stage 4
         emb_A = self.stage_4_A(emb_A)
         emb_B = self.stage_4_B(emb_B)
-        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
-        fused_4 = fuse_fts(fused_3, fused_4, method=self.fuse_method)
+        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_h)
+        fused_4 = fuse_fts(fused_3, fused_4, method=self.fuse_v)
 
         # Stage 4.1
         emb_A = self.stage_4_1_A(emb_A)
         emb_B = self.stage_4_1_B(emb_B)
-        fused_41 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
-        fused_41 = fuse_fts(fused_4, fused_41, method=self.fuse_method)
+        fused_41 = fuse_fts(emb_A, emb_B, method=self.fuse_h)
+        fused_41 = fuse_fts(fused_4, fused_41, method=self.fuse_v)
 
         # Stage 5
         emb = self.stage_5(fused_41)
@@ -597,9 +599,9 @@ class Fuse_Mk5(Fuse_Mk4):
 
 
 class Fuse_Mk3(nn.Module):
-    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
-        self.fuse_method = fuse_method
+        self.fuse_methods = fuse_methods['H']
         # Stage 1
         self.stage_1_A = Stage_Module(mod_type='conv_upsample', input_filters=input_size[-1], conv_filters=32)
         self.stage_1_B = copy.deepcopy(self.stage_1_A)
@@ -640,24 +642,24 @@ class Fuse_Mk3(nn.Module):
         # Stage 1
         emb_A = self.stage_1_A(ft1)
         emb_B = self.stage_1_B(ft2)
-        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
         fused_1 = self.stage_1_downsize(fused_1)
 
         # Stage 2
         emb_A = self.stage_2_A(emb_A)
         emb_B = self.stage_2_B(emb_B)
-        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
         fused_2 = self.stage_2_downsize(fused_2)
 
         # Stage 3
         emb_A = self.stage_3_A(emb_A)
         emb_B = self.stage_3_B(emb_B)
-        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
 
         # Stage 4
         emb_A = self.stage_4_A(emb_A)
         emb_B = self.stage_4_B(emb_B)
-        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
 
         # Concatenate stages
         fused_stages = torch.concatenate([fused_1, fused_2, fused_3, fused_4], dim=1)
@@ -673,9 +675,9 @@ class Fuse_Mk3(nn.Module):
 
 
 class Fuse_Mk2(nn.Module):
-    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
-        self.fuse_method = fuse_method
+        self.fuse_methods = fuse_methods['H']
         # Stage 1
         self.stage_1_A = Stage_Module(mod_type='conv_upsample', input_filters=input_size[-1], conv_filters=32)
         self.stage_1_B = copy.deepcopy(self.stage_1_A)
@@ -714,24 +716,24 @@ class Fuse_Mk2(nn.Module):
         # Stage 1
         emb_A = self.stage_1_A(ft1)
         emb_B = self.stage_1_B(ft2)
-        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
         fused_1 = nn.functional.max_pool2d(fused_1, (4, 4))
 
         # Stage 2
         emb_A = self.stage_2_A(emb_A)
         emb_B = self.stage_2_B(emb_B)
-        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
         fused_2 = nn.functional.max_pool2d(fused_2, (2, 2))
 
         # Stage 3
         emb_A = self.stage_3_A(emb_A)
         emb_B = self.stage_3_B(emb_B)
-        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
 
         # Stage 4
         emb_A = self.stage_4_A(emb_A)
         emb_B = self.stage_4_B(emb_B)
-        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
 
         # Concatenate stages
         fused_stages = torch.concatenate([fused_1, fused_2, fused_3, fused_4], dim=1)
@@ -747,9 +749,9 @@ class Fuse_Mk2(nn.Module):
 
 
 class Fuse_Net_ELU(nn.Module):
-    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
-        self.fuse_method = fuse_method
+        self.fuse_methods = fuse_methods['H']
         # initial embedding
         self.initial_embedder_A = nn.Sequential(
             nn.BatchNorm2d(input_size[-1]),
@@ -825,25 +827,25 @@ class Fuse_Net_ELU(nn.Module):
         # 1st stage
         emb_A = self.stage_1_A(emb_A)
         emb_B = self.stage_1_B(emb_B)
-        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
         fused_1 = nn.functional.max_pool2d(fused_1, (8, 8))
 
         # 2nd stage
         emb_A = self.stage_2_A(emb_A)
         emb_B = self.stage_2_B(emb_B)
-        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
         fused_2 = nn.functional.max_pool2d(fused_2, (4, 4))
 
         # 3rd stage
         emb_A = self.stage_3_A(emb_A)
         emb_B = self.stage_3_B(emb_B)
-        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
         fused_3 = nn.functional.max_pool2d(fused_3, (2, 2))
 
         # 4th stage
         emb_A = self.stage_4_A(emb_A)
         emb_B = self.stage_4_B(emb_B)
-        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_method)
+        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
 
         fused_final = torch.concatenate([fused_1, fused_2, fused_3, fused_4], dim=1)
 
@@ -852,9 +854,9 @@ class Fuse_Net_ELU(nn.Module):
 
 
 class VGG_Fuse_net(nn.Module):
-    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
-        self.fuse_method = fuse_method
+        self.fuse_methods = fuse_methods['H']
         self.preprocess = VGG16_Weights.IMAGENET1K_FEATURES.transforms()
 
         self.feature_extractor = vgg16(weights=VGG16_Weights.IMAGENET1K_FEATURES).features
@@ -877,16 +879,16 @@ class VGG_Fuse_net(nn.Module):
         emb_1 = self.feature_extractor(ft1)
         emb_2 = self.feature_extractor(ft2)
 
-        fused = fuse_fts(emb_1, emb_2, self.fuse_method)
+        fused = fuse_fts(emb_1, emb_2, self.fuse_methods)
         logits = self.classifier(emb_2)
 
         return logits
 
 
 class ResNet50_Fuse_Net(nn.Module):
-    def __init__(self, input_size: int, output_size: int, fuse_method: int):
+    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
-        self.fuse_method = fuse_method
+        self.fuse_methods = fuse_methods['H']
         self.preprocess = ResNet50_Weights.IMAGENET1K_V2.transforms()
 
         self.feature_extractor = ResNet50_extractor()
@@ -911,15 +913,15 @@ class ResNet50_Fuse_Net(nn.Module):
         emb_1 = self.feature_extractor.extract_fts(ft1)
         emb_2 = self.feature_extractor.extract_fts(ft2)
 
-        fused = fuse_fts(emb_1, emb_2, self.fuse_method)
+        fused = fuse_fts(emb_1, emb_2, self.fuse_methods)
         logits = self.classifier(fused)
 
         return logits
 
 
 class ResNet18_Fuse_Net(ResNet50_Fuse_Net):
-    def __init__(self, input_size: int, output_size: int, fuse_method: int):
-        super().__init__(input_size=input_size, output_size=output_size, fuse_method=fuse_method)
+    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
+        super().__init__(input_size=input_size, output_size=output_size, fuse_methods=fuse_methods)
         self.preprocess = ResNet18_Weights.IMAGENET1K_V1.transforms()
         self.feature_extractor = ResNet18_extractor()
 
