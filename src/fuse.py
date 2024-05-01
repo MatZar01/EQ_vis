@@ -26,7 +26,7 @@ def fuse_fts(ft1: torch.Tensor, ft2: torch.Tensor, method: int) -> torch.Tensor:
         ft1 = torch.unsqueeze(ft1, dim=1)
         ft2 = torch.unsqueeze(ft2, dim=1)
         fts = torch.concatenate([ft1, ft2], dim=1)
-        return torch.median(fts, dim=1).values
+        return torch.min(fts, dim=1).values
     elif method == 8:
         return torch.abs(ft1 * ft2)
     elif method == 9:
