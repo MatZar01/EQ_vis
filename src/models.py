@@ -1,8 +1,13 @@
 import torch
 from torch import nn
 import copy
-from torchvision.models import vgg16, VGG16_Weights, resnet50, ResNet50_Weights, resnet18, ResNet18_Weights
 from .fuse import fuse_fts
+
+##### Imports for baseline experiments
+from torchvision.models import vgg16, resnet18, resnet50
+from torchvision.models import VGG16_Weights, ResNet18_Weights, ResNet50_Weights
+from torchvision.models.vision_transformer import vit_b_16, vit_l_16
+from torchvision.models.vision_transformer import ViT_B_16_Weights, ViT_L_16_Weights
 
 
 class Init_Net(nn.Module):
@@ -101,19 +106,6 @@ class Comb_Net(nn.Module):
         emb = self.feature_extractor(x)
         logits = self.classifier(emb)
 
-        return logits
-
-
-class Init_Net_NF(Init_Net):
-    """Small_Net without feature fusion - only second branch for post disaster images"""
-    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
-        super().__init__(input_size=input_size, output_size=output_size, fuse_methods=fuse_methods)
-
-        self.embedder_second = None
-
-    def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
-        emb = self.embedder_first(ft2)
-        logits = self.classifier(emb)
         return logits
 
 
@@ -387,8 +379,8 @@ class Stage_Module(nn.Module):
         return self.module(x)
 
 
-class Fuse_Mk4(nn.Module):
-    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
+class Fuse_HV(nn.Module):  # Former Fuse_Mk4
+    def __init__(self, input_size: list, output_size: int, fuse_methods: dict):
         super().__init__()
         self.fuse_v = fuse_methods['V']
         self.fuse_h = fuse_methods['H']
@@ -541,7 +533,7 @@ class Fuse_Mk6(nn.Module):
         return logits
 
 
-class Fuse_Mk5(Fuse_Mk4):
+class Fuse_Mk5(Fuse_HV):
     def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__(input_size, output_size, fuse_methods)
         self.fuse_v = fuse_methods['V']
@@ -674,8 +666,8 @@ class Fuse_Mk3(nn.Module):
         return logits
 
 
-class Fuse_Mk2(nn.Module):
-    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
+class Fuse_H(nn.Module):
+    def __init__(self, input_size: list, output_size: int, fuse_methods: dict):
         super().__init__()
         self.fuse_methods = fuse_methods['H']
         # Stage 1
@@ -748,69 +740,37 @@ class Fuse_Mk2(nn.Module):
         return logits
 
 
-class Fuse_Net_ELU(nn.Module):
-    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
+class Fuse_V(nn.Module):
+    def __init__(self, input_size: list, output_size: int, fuse_methods: dict):
         super().__init__()
-        self.fuse_methods = fuse_methods['H']
-        # initial embedding
-        self.initial_embedder_A = nn.Sequential(
-            nn.BatchNorm2d(input_size[-1]),
-            nn.Conv2d(input_size[-1], 16, (3, 3), 1, 1),
-            nn.Conv2d(16, 32, (3, 3), 1, 1),
-            nn.Conv2d(32, 64, (3, 3), 1, 1),
-            nn.ELU(),
-            nn.MaxPool2d((2, 2))
-        )
-        self.initial_embedder_B = copy.deepcopy(self.initial_embedder_A)
-
-        # 1st stage embedding
-        self.stage_1_A = nn.Sequential(
-            nn.BatchNorm2d(64),
-            nn.Conv2d(64, 64, (3, 3), 1, 1),
-            nn.Conv2d(64, 64, (3, 3), 1, 1),
-            nn.Conv2d(64, 64, (3, 3), 1, 1),
-            nn.ELU(),
-            nn.MaxPool2d((2, 2))
-        )
+        filter_count = 64
+        self.fuse_methods = fuse_methods['V']
+        # Stage 1
+        self.stage_1_A = Stage_Module(mod_type='conv_upsample', input_filters=input_size[-1], conv_filters=filter_count)
         self.stage_1_B = copy.deepcopy(self.stage_1_A)
 
-        # 2nd stage embedding
-        self.stage_2_A = nn.Sequential(
-            nn.BatchNorm2d(64),
-            nn.Conv2d(64, 64, (3, 3), 1, 1),
-            nn.Conv2d(64, 64, (3, 3), 1, 1),
-            nn.Conv2d(64, 64, (3, 3), 1, 1),
-            nn.ELU(),
-            nn.MaxPool2d((2, 2))
-        )
+        # Stage 2
+        self.stage_2_A = Stage_Module(mod_type='conv_pool', conv_filters=filter_count, pool_size=2)
         self.stage_2_B = copy.deepcopy(self.stage_2_A)
 
-        # 3rd stage embedding
-        self.stage_3_A = nn.Sequential(
-            nn.BatchNorm2d(64),
-            nn.Conv2d(64, 64, (3, 3), 1, 1),
-            nn.Conv2d(64, 64, (3, 3), 1, 1),
-            nn.Conv2d(64, 64, (3, 3), 1, 1),
-            nn.ELU(),
-            nn.MaxPool2d((2, 2))
-        )
+        # Stage 3
+        self.stage_3_A = Stage_Module(mod_type='conv_pool', conv_filters=filter_count, pool_size=2)
         self.stage_3_B = copy.deepcopy(self.stage_3_A)
 
-        # 4th stage embedding
-        self.stage_4_A = nn.Sequential(
-            nn.BatchNorm2d(64),
-            nn.Conv2d(64, 64, (3, 3), 1, 1),
-            nn.Conv2d(64, 64, (3, 3), 1, 1),
-            nn.Conv2d(64, 64, (3, 3), 1, 1),
-            nn.ELU(),
-            nn.MaxPool2d((2, 2))
-        )
+        # Stage 4
+        self.stage_4_A = Stage_Module(conv_filters=filter_count)
         self.stage_4_B = copy.deepcopy(self.stage_4_A)
+
+        # Stage 5
+        self.stage_5 = Stage_Module(mod_type='conv_pool', conv_filters=filter_count*2, pool_size=2)
+
+        # Stage 5
+        self.stage_6 = Stage_Module(mod_type='conv_pool', conv_filters=filter_count*2, pool_size=4)
 
         # final classifier
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(12544, 4096),
+            nn.Linear(7*7*filter_count*2, 4096),
             nn.ReLU(),
             nn.Linear(4096, 512),
             nn.ReLU(),
@@ -820,125 +780,123 @@ class Fuse_Net_ELU(nn.Module):
         )
 
     def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
-        # initial embedding
-        emb_A = self.initial_embedder_A(ft1)
-        emb_B = self.initial_embedder_B(ft2)
+        # Stage 1
+        emb_A = self.stage_1_A(ft1)
+        emb_B = self.stage_1_B(ft2)
+        f_A = nn.functional.max_pool2d(emb_A, (2, 2))
+        f_B = nn.functional.max_pool2d(emb_B, (2, 2))
 
-        # 1st stage
-        emb_A = self.stage_1_A(emb_A)
-        emb_B = self.stage_1_B(emb_B)
-        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
-        fused_1 = nn.functional.max_pool2d(fused_1, (8, 8))
-
-        # 2nd stage
+        # Stage 2
         emb_A = self.stage_2_A(emb_A)
         emb_B = self.stage_2_B(emb_B)
-        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
-        fused_2 = nn.functional.max_pool2d(fused_2, (4, 4))
+        f_A = fuse_fts(f_A, emb_A, method=self.fuse_methods)
+        f_B = fuse_fts(f_B, emb_B, method=self.fuse_methods)
+        f_A = nn.functional.max_pool2d(f_A, (2, 2))
+        f_B = nn.functional.max_pool2d(f_B, (2, 2))
 
-        # 3rd stage
+        # Stage 3
         emb_A = self.stage_3_A(emb_A)
         emb_B = self.stage_3_B(emb_B)
-        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
-        fused_3 = nn.functional.max_pool2d(fused_3, (2, 2))
+        f_A = fuse_fts(f_A, emb_A, method=self.fuse_methods)
+        f_B = fuse_fts(f_B, emb_B, method=self.fuse_methods)
 
-        # 4th stage
+        # Stage 4
         emb_A = self.stage_4_A(emb_A)
         emb_B = self.stage_4_B(emb_B)
-        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_methods)
+        f_A = fuse_fts(f_A, emb_A, method=self.fuse_methods)
+        f_B = fuse_fts(f_B, emb_B, method=self.fuse_methods)
 
-        fused_final = torch.concatenate([fused_1, fused_2, fused_3, fused_4], dim=1)
+        # Concatenate stages
+        fused_stages = torch.concatenate([f_A, f_B], dim=1)
 
-        logits = self.classifier(fused_final)
+        # Stage 5
+        emb = self.stage_5(fused_stages)
+
+        # Stage 6
+        emb = self.stage_6(emb)
+
+        logits = self.classifier(emb)
         return logits
 
 
-class VGG_Fuse_net(nn.Module):
+class VGG(nn.Module):
     def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
-        self.fuse_methods = fuse_methods['H']
-        self.preprocess = VGG16_Weights.IMAGENET1K_FEATURES.transforms()
-
-        self.feature_extractor = vgg16(weights=VGG16_Weights.IMAGENET1K_FEATURES).features
-
+        model = vgg16(weights=VGG16_Weights.IMAGENET1K_V1)
+        self.preprocess = VGG16_Weights.IMAGENET1K_V1.transforms()
+        self.feature_extractor = model.features
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(512*7*7, 512),
+            nn.Linear(25088, 4096),
             nn.ReLU(),
-            nn.Linear(512, output_size),
-            #nn.ReLU(),
-            #nn.Linear(512, output_size)
+            nn.Dropout(p=0.5, inplace=False),
+            nn.Linear(4096, 4096),
+            nn.ReLU(),
+            nn.Dropout(p=0.5, inplace=False),
+            nn.Linear(4096, output_size)
         )
 
     def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
         # preprocess image
-        ft1 = self.preprocess(ft1)
-        ft2 = self.preprocess(ft2)
-
-        #with torch.no_grad():
-        emb_1 = self.feature_extractor(ft1)
-        emb_2 = self.feature_extractor(ft2)
-
-        fused = fuse_fts(emb_1, emb_2, self.fuse_methods)
-        logits = self.classifier(emb_2)
+        ft = self.preprocess(ft2)
+        ft = self.feature_extractor(ft)
+        logits = self.classifier(ft)
 
         return logits
 
 
-class ResNet50_Fuse_Net(nn.Module):
+class ResNet_18(nn.Module):
     def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
-        self.fuse_methods = fuse_methods['H']
+        self.model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+        self.model.fc = nn.Linear(512, output_size)
+        self.preprocess = ResNet18_Weights.IMAGENET1K_V1.transforms()
+
+    def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
+        ft = self.preprocess(ft2)
+        logits = self.model(ft)
+
+        return logits
+
+
+class ResNet_50(nn.Module):
+    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
+        super().__init__()
+        self.model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+        self.model.fc = nn.Linear(2048, output_size)
         self.preprocess = ResNet50_Weights.IMAGENET1K_V2.transforms()
 
-        self.feature_extractor = ResNet50_extractor()
-
-        self.classifier = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(2048, 1024),
-            nn.ReLU(),
-            nn.Linear(1024, 512),
-            nn.ReLU(),
-            nn.Linear(512, output_size),
-            #nn.ReLU(),
-            #nn.Linear(512, output_size)
-        )
-
     def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
-        # preprocess image
-        ft1 = self.preprocess(ft1)
-        ft2 = self.preprocess(ft2)
-
-        #with torch.no_grad():
-        emb_1 = self.feature_extractor.extract_fts(ft1)
-        emb_2 = self.feature_extractor.extract_fts(ft2)
-
-        fused = fuse_fts(emb_1, emb_2, self.fuse_methods)
-        logits = self.classifier(fused)
+        ft = self.preprocess(ft2)
+        logits = self.model(ft)
 
         return logits
 
 
-class ResNet18_Fuse_Net(ResNet50_Fuse_Net):
+class VIT_B(nn.Module):
     def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
-        super().__init__(input_size=input_size, output_size=output_size, fuse_methods=fuse_methods)
-        self.preprocess = ResNet18_Weights.IMAGENET1K_V1.transforms()
-        self.feature_extractor = ResNet18_extractor()
+        super().__init__()
+        self.model = vit_b_16(weights=ViT_B_16_Weights.IMAGENET1K_V1)
+        self.model.heads = nn.Linear(768, output_size)
+        self.preprocess = ViT_B_16_Weights.IMAGENET1K_V1.transforms()
+
+    def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
+        ft = self.preprocess(ft2)
+        logits = self.model(ft)
+
+        return logits
 
 
-class ResNet50_extractor:
-    def __init__(self, weights=ResNet50_Weights.IMAGENET1K_V2):
-        self.init_model = resnet50(weights=weights).to('cuda')
-        self.init_model.fc = nn.Identity()
+class VIT_L(nn.Module):
+    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
+        super().__init__()
+        self.model = vit_l_16(weights=ViT_L_16_Weights.IMAGENET1K_V1)
+        self.model.heads = nn.Linear(1024, output_size)
+        self.preprocess = ViT_L_16_Weights.IMAGENET1K_V1.transforms()
 
-    def extract_fts(self, x: torch.Tensor) -> torch.Tensor:
-        return self.init_model(x)
+    def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
+        ft = self.preprocess(ft2)
+        logits = self.model(ft)
 
+        return logits
 
-class ResNet18_extractor:
-    def __init__(self, weights=ResNet18_Weights.IMAGENET1K_V1):
-        self.init_model = resnet18(weights=weights).to('cuda')
-        self.init_model.fc = nn.Identity()
-
-    def extract_fts(self, x: torch.Tensor) -> torch.Tensor:
-        return self.init_model(x)
