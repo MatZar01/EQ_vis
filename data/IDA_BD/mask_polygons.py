@@ -155,7 +155,11 @@ def save_one_mask(masks, output_path, mask_file_name):
     """
     # For each filled polygon, write the mask shape out to the file per image
     mask_file_name = path.join(output_path, mask_file_name + '.png').replace('_pre', '_post')
-    imwrite(mask_file_name, masks)
+    mask_file_pre = mask_file_name.replace('_post', '_pre')
+    mask_post = masks[:, :, 0]
+    mask_pre = np.where(mask_post == 0, 0, 255)
+    imwrite(mask_file_name, mask_post)
+    imwrite(mask_file_pre, mask_pre)
     
 
 def read_json(json_path):
