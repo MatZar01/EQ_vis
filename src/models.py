@@ -457,6 +457,100 @@ class Fuse_HV(nn.Module):  # Former Fuse_Mk4
         return logits
 
 
+class Fuse_HV_2(nn.Module):  # Former Fuse_Mk4
+    def __init__(self, input_size: list, output_size: int, fuse_methods: dict):
+        super().__init__()
+        self.fuse_v = fuse_methods['V']
+        self.fuse_h = fuse_methods['H']
+        filter_count = 64
+        # Stage 1
+        self.stage_1_A = Stage_Module(mod_type='conv_upsample', input_filters=input_size[-1], conv_filters=filter_count)
+        self.stage_1_B = copy.deepcopy(self.stage_1_A)
+        self.stage_1_downsize = Stage_Module(mod_type='conv_downsize', conv_filters=filter_count, pool_size=4)
+
+        # Stage 2
+        self.stage_2_A = Stage_Module(mod_type='conv_pool', conv_filters=filter_count, pool_size=2)
+        self.stage_2_B = copy.deepcopy(self.stage_2_A)
+        self.stage_2_downsize = Stage_Module(mod_type='conv_downsize', conv_filters=filter_count, pool_size=2)
+
+        # Stage 3
+        self.stage_3_A = Stage_Module(mod_type='conv_pool', conv_filters=filter_count, pool_size=2)
+        self.stage_3_B = copy.deepcopy(self.stage_3_A)
+
+        # Stage 4
+        self.stage_4_A = Stage_Module(conv_filters=filter_count)
+        self.stage_4_B = copy.deepcopy(self.stage_4_A)
+
+        # Stage 5
+        self.stage_5_A = Stage_Module(conv_filters=filter_count)
+        self.stage_5_B = copy.deepcopy(self.stage_5_A)
+
+        # Stage 6
+        self.stage_6 = Stage_Module(mod_type='conv_pool', conv_filters=filter_count, pool_size=2)
+
+        # Stage 7
+        self.stage_7 = Stage_Module(mod_type='conv_pool', conv_filters=filter_count, pool_size=4)
+
+        # Stage 8
+        self.stage_8 = Stage_Module(conv_filters=filter_count)
+
+        # final classifier
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(7*7*filter_count, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+            nn.Linear(512, 128),
+            nn.ReLU(),
+            nn.Linear(128, output_size)
+        )
+
+    def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
+        # Stage 1
+        emb_A = self.stage_1_A(ft1)
+        emb_B = self.stage_1_B(ft2)
+        fused_1 = fuse_fts(emb_A, emb_B, method=self.fuse_h)
+        fused_1 = self.stage_1_downsize(fused_1)
+
+        # Stage 2
+        emb_A = self.stage_2_A(emb_A)
+        emb_B = self.stage_2_B(emb_B)
+        fused_2 = fuse_fts(emb_A, emb_B, method=self.fuse_h)
+        fused_2 = self.stage_2_downsize(fused_2)
+        fused_2 = fuse_fts(fused_1, fused_2, method=self.fuse_v)
+
+        # Stage 3
+        emb_A = self.stage_3_A(emb_A)
+        emb_B = self.stage_3_B(emb_B)
+        fused_3 = fuse_fts(emb_A, emb_B, method=self.fuse_h)
+        fused_3 = fuse_fts(fused_2, fused_3, method=self.fuse_v)
+
+        # Stage 4
+        emb_A = self.stage_4_A(emb_A)
+        emb_B = self.stage_4_B(emb_B)
+        fused_4 = fuse_fts(emb_A, emb_B, method=self.fuse_h)
+        fused_4 = fuse_fts(fused_3, fused_4, method=self.fuse_v)
+
+        # Stage 5
+        emb_A = self.stage_4_A(emb_A)
+        emb_B = self.stage_4_B(emb_B)
+        fused_5 = fuse_fts(emb_A, emb_B, method=self.fuse_h)
+        fused_5 = fuse_fts(fused_4, fused_5, method=self.fuse_v)
+
+        # Stage 6
+        emb = self.stage_6(fused_5)
+
+        # Stage 6
+        emb = self.stage_7(emb)
+
+        # Stage 7
+        emb = self.stage_8(emb)
+
+        logits = self.classifier(emb)
+        return logits
+
+
 class Fuse_Mk6(nn.Module):
     def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
