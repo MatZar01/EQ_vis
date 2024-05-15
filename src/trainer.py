@@ -64,11 +64,11 @@ class Light_Net(L.LightningModule):
                               lr=self.optimizer.param_groups[0]['lr'])
         self.log('Acc/train', self.acc_train.compute().item())
         self.log('Loss/train', self.loss_train)
-        print(f'\n[INFO] Training -- Loss: {self.loss_train} Accuracy: {self.acc_train.compute().item()}')
+        print(f'\n[INFO] Training -- Loss: {self.loss_train} Accuracy: {self.acc_train.compute().item()}\n')
 
     def on_validation_epoch_end(self):
         self.log('Acc/test', self.acc_test.compute().item())
         self.log('Loss/test', self.loss_test)
         self.log('LR', self.optimizer.param_groups[0]['lr'])
-        print(f'\n[INFO] Testing -- Loss: {self.loss_test}, Accuracy: {self.acc_test.compute().item()}')
+        print(f'\n[INFO] Testing -- Loss: {self.loss_test}, Accuracy: {self.acc_test.compute().item()}\n')
 
