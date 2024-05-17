@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from imutils import paths
 from tqdm import tqdm
 
-dataset_name = 'data/IDA_BD/PRJ-3563'
-DIR = f'{dataset_name}/masks'
+dataset_name = 'data/IDA_BD/IDA-BD/PRJ-3563'
+DIR = f'{dataset_name}/labels'
 pts = list(paths.list_images(DIR))
 pts_pre = []
 
@@ -23,8 +23,8 @@ for i in tqdm(range(len(pts_pre))):
     p = pts_pre[i]
     lbl_pre_p = p
     lbl_post_p = p.replace('_pre_', '_post_')
-    im_pre_p = p.replace('masks', 'images')
-    im_post_p = lbl_post_p.replace('masks', 'images')
+    im_pre_p = p.replace('labels', 'images')
+    im_post_p = lbl_post_p.replace('labels', 'images')
 
     lbl_pre = cv2.imread(lbl_pre_p, -1)
     lbl_post = cv2.imread(lbl_post_p, -1)
@@ -73,8 +73,8 @@ for i in tqdm(range(len(pts_pre))):
         cv2.imshow('dd2', warped_lbl_post*75)
         cv2.imshow('ss2', warped_post)
         cv2.waitKey(0)'''
-        cv2.imwrite(f'DS/IDA-BD/i_A/{iter}.png', warped)
-        cv2.imwrite(f'DS/IDA-BD/i_B/{iter}_{label}.png', warped_post)
+        cv2.imwrite(f'DS/xView/i_A/{iter}.png', warped)
+        cv2.imwrite(f'DS/xView/i_B/{iter}_{label}.png', warped_post)
         iter += 1
 
     '''plt.imshow(lbl_pre)

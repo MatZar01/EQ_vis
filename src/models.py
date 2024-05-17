@@ -184,7 +184,7 @@ class Fuse_HV(nn.Module):  # Former Fuse_Mk4
         super().__init__()
         self.fuse_v = fuse_methods['V']
         self.fuse_h = fuse_methods['H']
-        filter_count = 64
+        filter_count = 96
         # Stage 1
         self.stage_1_A = Stage_Module(mod_type='conv_upsample', input_filters=input_size[-1], conv_filters=filter_count)
         self.stage_1_B = copy.deepcopy(self.stage_1_A)
@@ -627,7 +627,7 @@ class VGG(nn.Module):
         self.feature_extractor = model.features
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(25088, 4096),
+            nn.Linear(25088*2, 4096),
             nn.ReLU(),
             nn.Dropout(p=0.5, inplace=False),
             nn.Linear(4096, 4096),
@@ -638,9 +638,14 @@ class VGG(nn.Module):
 
     def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
         # preprocess image
-        ft = self.preprocess(ft2)
-        ft = self.feature_extractor(ft)
-        logits = self.classifier(ft)
+        ft1 = self.preprocess(ft1)
+        ft1 = self.feature_extractor(ft1)
+
+        ft2 = self.preprocess(ft2)
+        ft2 = self.feature_extractor(ft2)
+
+        fts = torch.concatenate([ft1, ft2], dim=1)
+        logits = self.classifier(fts)
 
         return logits
 
@@ -649,12 +654,19 @@ class ResNet_18(nn.Module):
     def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
         self.model = resnet18()
-        self.model.fc = nn.Linear(512, output_size)
+        self.model.fc = nn.Identity()
         self.preprocess = ResNet18_Weights.IMAGENET1K_V1.transforms()
+        self.clf = nn.Linear(512*2, output_size)
 
     def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
-        ft = self.preprocess(ft2)
-        logits = self.model(ft)
+        ft1 = self.preprocess(ft1)
+        ft1 = self.model(ft1)
+
+        ft2 = self.preprocess(ft2)
+        ft2 = self.model(ft2)
+
+        fts = torch.concatenate([ft1, ft2], dim=1)
+        logits = self.clf(fts)
 
         return logits
 
@@ -663,12 +675,19 @@ class ResNet_50(nn.Module):
     def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
         self.model = resnet50()
-        self.model.fc = nn.Linear(2048, output_size)
+        self.model.fc = nn.Identity()
         self.preprocess = ResNet50_Weights.IMAGENET1K_V2.transforms()
+        self.clf = nn.Linear(2048*2, output_size)
 
     def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
-        ft = self.preprocess(ft2)
-        logits = self.model(ft)
+        ft1 = self.preprocess(ft1)
+        ft1 = self.model(ft1)
+
+        ft2 = self.preprocess(ft2)
+        ft2 = self.model(ft2)
+
+        fts = torch.concatenate([ft1, ft2], dim=1)
+        logits = self.clf(fts)
 
         return logits
 
@@ -677,12 +696,19 @@ class VIT_B(nn.Module):
     def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
         self.model = vit_b_16()
-        self.model.heads = nn.Linear(768, output_size)
+        self.model.heads = nn.Identity()
         self.preprocess = ViT_B_16_Weights.IMAGENET1K_V1.transforms()
+        self.clf = nn.Linear(768*2, output_size)
 
     def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
-        ft = self.preprocess(ft2)
-        logits = self.model(ft)
+        ft1 = self.preprocess(ft1)
+        ft1 = self.model(ft1)
+
+        ft2 = self.preprocess(ft2)
+        ft2 = self.model(ft2)
+
+        fts = torch.concatenate([ft1, ft2], dim=1)
+        logits = self.clf(fts)
 
         return logits
 
@@ -691,12 +717,19 @@ class VIT_L(nn.Module):
     def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
         self.model = vit_l_16()
-        self.model.heads = nn.Linear(1024, output_size)
+        self.model.heads = nn.Identity()
         self.preprocess = ViT_L_16_Weights.IMAGENET1K_V1.transforms()
+        self.clf = nn.Linear(1024*2, output_size)
 
     def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
-        ft = self.preprocess(ft2)
-        logits = self.model(ft)
+        ft1 = self.preprocess(ft1)
+        ft1 = self.model(ft1)
+
+        ft2 = self.preprocess(ft2)
+        ft2 = self.model(ft2)
+
+        fts = torch.concatenate([ft1, ft2], dim=1)
+        logits = self.clf(fts)
 
         return logits
 
