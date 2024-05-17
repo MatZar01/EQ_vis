@@ -887,6 +887,67 @@ class BasicFuseBlock(nn.Module):
         return out
 
 
+class BottleneckFused(nn.Module):
+    # Bottleneck in torchvision places the stride for downsampling at 3x3 convolution(self.conv2)
+    # while original implementation places the stride at the first 1x1 convolution(self.conv1)
+    # according to "Deep residual learning for image recognition" https://arxiv.org/abs/1512.03385.
+    # This variant is also known as ResNet V1.5 and improves accuracy according to
+    # https://ngc.nvidia.com/catalog/model-scripts/nvidia:resnet_50_v1_5_for_pytorch.
+
+    expansion: int = 4
+
+    def __init__(
+        self,
+        inplanes: int,
+        planes: int,
+        stride: int = 1,
+        downsample: Optional[nn.Module] = None,
+        groups: int = 1,
+        base_width: int = 64,
+        dilation: int = 1,
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
+        fuse_method: int = 1,
+    ) -> None:
+        super().__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        width = int(planes * (base_width / 64.0)) * groups
+        # Both self.conv2 and self.downsample layers downsample the input when stride != 1
+        self.conv1 = conv1x1(inplanes, width)
+        self.bn1 = norm_layer(width)
+        self.conv2 = conv3x3(width, width, stride, groups, dilation)
+        self.bn2 = norm_layer(width)
+        self.conv3 = conv1x1(width, planes * self.expansion)
+        self.bn3 = norm_layer(planes * self.expansion)
+        self.relu = nn.ReLU(inplace=True)
+        self.downsample = downsample
+        self.stride = stride
+        self.fuse_method = fuse_method
+
+    def forward(self, x: Tensor) -> Tensor:
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        # out += identity
+        out = fuse_fts(out, identity, self.fuse_method)
+        out = self.relu(out)
+
+        return out
+
+
 class resnet_f(nn.Module):
     def __init__(
         self,
@@ -1005,6 +1066,29 @@ class ResNet_18_F(nn.Module):
         self.fuse_v = fuse_methods['V']
         self.fuse_h = fuse_methods['H']
         self.model = resnet_f(BasicFuseBlock, [2, 2, 2, 2], fuse_method=self.fuse_v)
+        self.model.fc = nn.Identity()
+        self.preprocess = ResNet18_Weights.IMAGENET1K_V1.transforms()
+        self.clf = nn.Linear(512, output_size)
+
+    def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
+        ft1 = self.preprocess(ft1)
+        ft1 = self.model(ft1)
+
+        ft2 = self.preprocess(ft2)
+        ft2 = self.model(ft2)
+
+        fts = fuse_fts(ft1, ft2, self.fuse_h)
+        logits = self.clf(fts)
+
+        return logits
+
+
+class ResNet_50_F(nn.Module):
+    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
+        super().__init__()
+        self.fuse_v = fuse_methods['V']
+        self.fuse_h = fuse_methods['H']
+        self.model = resnet_f(BottleneckFused, [3, 4, 6, 3], fuse_method=self.fuse_v)
         self.model.fc = nn.Identity()
         self.preprocess = ResNet18_Weights.IMAGENET1K_V1.transforms()
         self.clf = nn.Linear(512, output_size)
