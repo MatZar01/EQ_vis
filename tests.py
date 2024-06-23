@@ -103,3 +103,63 @@ module = nn.Sequential(
                     nn.ReLU(),
                 )
 out2 = module(input2)
+#%%
+import json
+from imutils import paths
+
+ftypes = []
+dmgs = []
+pts = list(paths.list_files('/home/mateusz/Desktop/EQ_vis/data/IDA_BD/xView2/geotiffs/hold/labels'))
+pts = [x for x in pts if 'post' in x]
+for p in pts:
+    d = json.load(open(p, 'r'))
+    for o in d['features']['xy']:
+        ftypes.append(o['properties']['feature_type'])
+        dmgs.append(o['properties']['subtype'])
+#%%
+import numpy as np
+f = np.array(ftypes)
+d = np.array(dmgs)
+ds = np.unique(d, return_counts=True)
+fs = np.unique(f, return_counts=True)
+#%%
+import cv2
+import json
+import numpy as np
+from imutils import paths
+from tqdm import tqdm
+
+im_pts = list(paths.list_files('/home/mateusz/Desktop/EQ_vis/data/IDA_BD/xV/geotiffs/images'))
+im_pts = [x for x in im_pts if '_post' in x]
+
+for i in tqdm(range(len(im_pts))):
+    p = im_pts[i]
+    lb_p = p.replace('images', 'masks').replace('post', 'pre').replace('.tif', '.png')
+    im = cv2.imread(p, -1)
+    lbl = cv2.imread(lb_p, -1)
+    if lbl is None:
+        continue
+    unqs = np.unique(lbl)
+    if len(unqs) > 2:
+        print(unqs)
+        cv2.imwrite('/home/mateusz/Desktop/EQ_vis/data/IDA_BD/xV/geotiffs/image.tif', im.astype('uint8'))
+        cv2.imwrite('/home/mateusz/Desktop/EQ_vis/data/IDA_BD/xV/geotiffs/mask.tif', lbl * 60)
+        break
+#%%
+import yaml
+from imutils import paths
+DIR = '/home/mateusz/Desktop/EQ_vis/results/results_xView'
+pts = list(paths.list_files(DIR))
+
+max_tests = []
+fuses = []
+for p in pts:
+    data = yaml.load(open(p, 'r'), Loader=yaml.Loader)
+    max_t = max(data['test']['acc'])
+    fuse = data['FUSE_METHODS']
+    max_tests.append(max_t)
+    fuses.append(fuse)
+#%%
+Z = [x for _, x in sorted(zip(max_tests, fuses), key=lambda pair: pair[0])][::-1]
+i = fuses.index(Z[0])
+print(Z[:3])

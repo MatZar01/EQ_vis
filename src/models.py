@@ -671,13 +671,14 @@ class ResNet_18(nn.Module):
         return logits
 
 
-class ResNet_50(nn.Module):
+class ResNet_50_HS(nn.Module):
     def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
         super().__init__()
+        self.fuse_method = fuse_methods['H']
         self.model = resnet50()
         self.model.fc = nn.Identity()
         self.preprocess = ResNet50_Weights.IMAGENET1K_V2.transforms()
-        self.clf = nn.Linear(2048*2, output_size)
+        self.clf = nn.Linear(2048, output_size)
 
     def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
         ft1 = self.preprocess(ft1)
@@ -686,7 +687,30 @@ class ResNet_50(nn.Module):
         ft2 = self.preprocess(ft2)
         ft2 = self.model(ft2)
 
-        fts = torch.concatenate([ft1, ft2], dim=1)
+        fts = fuse_fts(ft1, ft2, self.fuse_method)
+        logits = self.clf(fts)
+
+        return logits
+
+class ResNet_50_HD(nn.Module):
+    def __init__(self, input_size: int, output_size: int, fuse_methods: dict):
+        super().__init__()
+        self.fuse_method = fuse_methods['H']
+        self.model_f1 = resnet50()
+        self.model_f1.fc = nn.Identity()
+        self.model_f2 = resnet50()
+        self.model_f2.fc = nn.Identity()
+        self.preprocess = ResNet50_Weights.IMAGENET1K_V2.transforms()
+        self.clf = nn.Linear(2048, output_size)
+
+    def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
+        ft1 = self.preprocess(ft1)
+        ft1 = self.model_f1(ft1)
+
+        ft2 = self.preprocess(ft2)
+        ft2 = self.model_f2(ft2)
+
+        fts = fuse_fts(ft1, ft2, self.fuse_method)
         logits = self.clf(fts)
 
         return logits
