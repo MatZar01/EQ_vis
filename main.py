@@ -5,6 +5,7 @@ from src import Grapher
 from src import Scheduler_manager
 from src import verbose, get_args
 from src import MSE_weighted
+from src import MSE_w
 from torch.utils.data import DataLoader
 import importlib
 import lightning as L
@@ -34,6 +35,7 @@ if __name__ == '__main__':
 
     # initialize loss fn and optimizer
     loss = torch.nn.MSELoss()
+    #loss = MSE_w()
     #loss = torch.nn.NLLLoss(weight=torch.Tensor(model_info['CLASS_W']))
     #loss = torch.nn.HuberLoss()
     #loss = torch.nn.BCELoss()

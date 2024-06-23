@@ -1091,7 +1091,7 @@ class ResNet_50_F(nn.Module):
         self.model = resnet_f(BottleneckFused, [3, 4, 6, 3], fuse_method=self.fuse_v)
         self.model.fc = nn.Identity()
         self.preprocess = ResNet18_Weights.IMAGENET1K_V1.transforms()
-        self.clf = nn.Linear(512, output_size)
+        self.clf = nn.Linear(2048, output_size)
 
     def forward(self, ft1: torch.Tensor, ft2: torch.Tensor) -> torch.Tensor:
         ft1 = self.preprocess(ft1)
