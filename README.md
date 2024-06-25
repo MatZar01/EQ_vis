@@ -1,7 +1,7 @@
 # EQ_vis Fusion Module readme
 Feature-fusion based method for post-earthquake damage assessment with satellite imaging 
 
-This is a readme file describing the operation and processing of data for the purposes of implementing **Fuse Module** solution from **Multi-step feature fusion for natural disaster damage assessment on satellite images** paper. The work was done by me ([Mateusz Żarski, MSc](https://www.iitis.pl/en/node/3227)) and my associate ([Jarosław A. Miszczak, MSc](https://iitis.pl/pl/person/jmiszczak)) at the [Institute of Theoretical and Applied Informatics of the Polish Academy of Sciences](https://www.iitis.pl/en). 
+This is a readme file describing the operation and processing of data for the purposes of implementing **Fuse Module** solution from **Multi-step feature fusion for natural disaster damage assessment on satellite images** paper. The work was done by me ([Mateusz Żarski, PhD](https://www.iitis.pl/en/node/3227)) and my associate ([Jarosław A. Miszczak, DSc](https://iitis.pl/pl/person/jmiszczak)) at the [Institute of Theoretical and Applied Informatics of the Polish Academy of Sciences](https://www.iitis.pl/en). 
 
 Our Fuse Module:
 
