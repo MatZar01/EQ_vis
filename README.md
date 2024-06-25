@@ -65,6 +65,8 @@ In order to use our solution with the dataset provided in Project or reproduce o
 2. Prepare your training recipe in `.py` or `.yml` file, specifying correct data path and training parameters.
 3. Run your training with `python3 main.py` for using default recipe, `python3 main.py {path_to_your_recipe}` to run training with single prepared recipe, or for performing training on a grid of parameters, simply run `sh runner.sh`, first modyfying `search_dir` to the path of your directory with multiple training recipes.
 
+We also provide `planner.py` for helping with preparing parameter grid for testing.
+
 And thats it.
 
 Your training will be logged with tensorboard in `lightning_logs` folder, and you can track the progress with tensorboard over your browser. At the end of the training, another log, containing results of the training will also be logged in `result_graphs` directory along with training parameters.
