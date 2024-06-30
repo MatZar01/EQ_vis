@@ -45,7 +45,7 @@ class Light_Net(L.LightningModule):
     def training_step(self, batch, batch_idx):
         loss, preds, flag = self.network_step(batch)
         self.loss_train = loss
-        self.acc_train(preds, flag)
+        self.acc_train(torch.argmax(preds, dim=1), torch.argmax(flag, dim=1))
 
         self.log('Acc/train/step', self.acc_train)
         self.log("Loss/train/step", self.loss_train)
@@ -54,7 +54,7 @@ class Light_Net(L.LightningModule):
     def validation_step(self,  batch, batch_idx):
         loss, preds, flag = self.network_step(batch)
         self.loss_test = loss
-        self.acc_test(preds, flag)
+        self.acc_test(torch.argmax(preds, dim=1), torch.argmax(flag, dim=1))
 
         return self.loss_test
 
