@@ -83,6 +83,11 @@ And some of the results we obtained with both our custom CNN model and predefine
 
 # Citing
 
-This project is already published at IEEE Acsess 
+This project is already published at IEEE Acsess, visit it, it's a blast :)
+
+[For ArXiv click here]([https://www.genome.gov/](https://arxiv.org/abs/2410.21901))
+
+And for IEEE article - you'll good to go [here]([[https://www.genome.gov/](https://arxiv.org/abs/2410.21901](https://ieeexplore.ieee.org/document/10679116)))
+
 
 
