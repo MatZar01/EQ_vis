@@ -80,3 +80,9 @@ Below is an image showing example crops from the datasets we were using:
 And some of the results we obtained with both our custom CNN model and predefined models using our Fuse Module:
 
 <img src="https://i.ibb.co/Pc0Kky7/image-2024-06-25-141239247.png" alt="Dataset" width="400"/>
+
+# Citing
+
+This project is already published at IEEE Acsess 
+
+
